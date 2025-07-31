@@ -10,8 +10,31 @@
   <h2>BMR Calculator</h2>
   <form id="bmr-form">
     <input type="number" placeholder="Age" id="age" required>
-    <input type="number" placeholder="Weight (kg)" id="weight" required>
-    <input type="number" placeholder="Height (cm)" id="height" required>
+  <!-- Weight Input with Unit -->
+  <div class="input-group">
+    <input type="number" placeholder="Weight" id="weight" required>
+    <select id="weight-unit">
+      <option value="kg">kg</option>
+      <option value="lbs">lbs</option>
+    </select>
+  </div>
+
+  <!-- Height Input with Unit -->
+  <div class="input-group">
+    <input type="number" placeholder="Height" id="height" required>
+    <select id="height-unit">
+      <option value="cm">cm</option>
+      <option value="in">inches</option>
+      <option value="ftin">ft/in</option>
+    </select>
+  </div>
+
+  <!-- Optional fields for ft/in -->
+  <div id="height-ftin-fields" style="display: none;">
+    <input type="number" id="height-ft" placeholder="Feet">
+    <input type="number" id="height-in" placeholder="Inches">
+  </div>
+    
     <select id="gender">
       <option value="male">Male</option>
       <option value="female">Female</option>
