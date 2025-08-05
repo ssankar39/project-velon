@@ -1,50 +1,38 @@
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("bmr-form");
   const heightUnitSelect = document.getElementById("height-unit");
-  const heightFtInFields = document.getElementById("height-ftin-fields");
-
-  // Show/hide ft/in fields based on height unit selection
-  heightUnitSelect.addEventListener("change", function() {
-    if (this.value === "ftin") {
-      heightFtInFields.style.display = "flex";
-      heightFtInFields.style.gap = "10px";
-    } else {
-      heightFtInFields.style.display = "none";
-    }
-  });
+  const tdeeSection = document.getElementById("tdee-calculator");
+  const tdeeForm = document.getElementById("tdee-form");
+  let storedBMR = null; //For TDEE calculation
 
   // Validation function
-  function validateInputs(age, weight, height, heightUnit, heightFt, heightIn) {
+  function validateInputs(age, weight, height, heightUnit, heightIn) {
     const errors = [];
 
-    // Age validation
     if (age <= 0 || age > 150) {
       errors.push("Age must be between 1 and 100 years");
     }
 
-    // Weight validation
     if (weight <= 0 || weight > 1000) {
       errors.push("Weight must be a positive number (max 1000)");
     }
 
-    // Height validation
-    if (heightUnit === "ftin") {
-      if (heightFt <= 0 || heightFt > 8) {
-        errors.push("Height (feet) must be between 1 and 8 feet");
+    if (height <= 0) 
+      {
+      errors.push("Height must be greater than 0");
+      } else 
+      {
+        if (heightUnit === "in" && height > 105) {
+          errors.push("Height in inches must not exceed 105");
+        }
+        if (heightUnit === "cm" && height > 267) {
+          errors.push("Height in cm must not exceed 267");
+        }
       }
-      if (heightIn < 0 || heightIn >= 12) {
-        errors.push("Height (inches) must be between 0 and 11 inches");
-      }
-    } else {
-      if (height <= 0 || height > 300) {
-        errors.push("Height must be a positive number (max 300)");
-      }
-    }
 
     return errors;
   }
 
-  // Display error messages
   function showErrors(errors) {
     const resultElement = document.getElementById("bmr-result");
     resultElement.innerHTML = errors.map(error => `<span style="color: red;">• ${error}</span>`).join('<br>');
@@ -59,33 +47,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const weightUnit = document.getElementById("weight-unit").value;
     const heightUnitValue = document.getElementById("height-unit").value;
     const gender = document.getElementById("gender").value;
-    
-    let heightFt = 0;
-    let heightIn = 0;
-    
-    if (heightUnitValue === "ftin") {
-      heightFt = parseInt(document.getElementById("height-ft").value) || 0;
-      heightIn = parseInt(document.getElementById("height-in").value) || 0;
-    }
 
     // Validate inputs
-    const errors = validateInputs(age, weight, height, heightUnitValue, heightFt, heightIn);
-    
+    const errors = validateInputs(age, weight, height, heightUnitValue);
+
     if (errors.length > 0) {
       showErrors(errors);
       return;
     }
 
-    // Convert weight to kg
+    // Convert units
     if (weightUnit === "lbs") {
       weight = weight * 0.453592;
     }
 
-    // Convert height to cm
     if (heightUnitValue === "in") {
       height = height * 2.54;
-    } else if (heightUnitValue === "ftin") {
-      height = (heightFt * 12 + heightIn) * 2.54;
     }
 
     // Calculate BMR
@@ -96,17 +73,40 @@ document.addEventListener("DOMContentLoaded", () => {
       bmr = 10 * weight + 6.25 * height - 5 * age - 161;
     }
 
+    storedBMR = bmr;
+
     document.getElementById("bmr-result").innerHTML =
       `<span style="color: green;">Your BMR is ${bmr.toFixed(2)} calories/day.</span>`;
+
+    // Show TDEE section
+    if (tdeeSection) tdeeSection.style.display = "block";
   });
 
-  // Real-time validation (optional) - removes error styling when user starts typing
-  const inputs = ['age', 'weight', 'height', 'height-ft', 'height-in'];
+  // TDEE form handling
+  if (tdeeForm) {
+    tdeeForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      if (!storedBMR) {
+        document.getElementById("tdee-result").innerHTML =
+          `<span style="color:red;">Please calculate BMR first.</span>`;
+        return;
+      }
+
+      const activityMultiplier = parseFloat(document.getElementById("activity-level").value);
+      const tdee = storedBMR * activityMultiplier;
+
+      document.getElementById("tdee-result").innerHTML =
+        `<span style="color: green;">Your TDEE is ${tdee.toFixed(2)} calories/day.</span>`;
+    });
+  }
+
+  // Optional: clear red borders on input
+  const inputs = ['age', 'weight', 'height', 'height-in'];
   inputs.forEach(inputId => {
     const input = document.getElementById(inputId);
     if (input) {
-      input.addEventListener('input', function() {
-        // Remove red border when user starts typing
+      input.addEventListener('input', function () {
         this.style.borderColor = '#ccc';
       });
     }

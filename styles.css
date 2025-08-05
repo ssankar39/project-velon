@@ -10,9 +10,11 @@ body, h2, form, input, select, button, p {
 body {
   background: #f0f2f5;
   display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
   min-height: 100vh;
+  padding: 20px;
 }
 
 h2{
@@ -21,13 +23,14 @@ h2{
   margin-bottom: 20px;
 }
 
-/* Container for BMR calculator */
-#bmr-calculator {
+/* Container for calculators */
+.calculator {
   background: #ffffff;
   padding: 30px;
   border-radius: 15px;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
   width: 320px;
+  margin-bottom: 20px;
 }
 
 /* Form elements */
@@ -60,7 +63,6 @@ input, select {
   border: 1px solid #ccc;
 }
 
-
 /* Submit button */
 button {
   padding: 10px;
@@ -77,11 +79,33 @@ button:hover {
   background-color: #45a049;
 }
 
+/* TDEE button styling */
+#tdee-calculator button {
+  background-color: #2196f3;
+}
+
+#tdee-calculator button:hover {
+  background-color: #1976d2;
+}
+
 /* Result paragraph */
-#bmr-result {
+.result {
   margin-top: 15px;
   font-size: 18px;
   color: #333;
   font-weight: bold;
   text-align: center;
+}
+
+/* TDEE calculator specific styling */
+#tdee-calculator {
+  display: none;
+}
+
+.info-text {
+  font-size: 14px;
+  color: #666;
+  text-align: center;
+  margin-bottom: 15px;
+  font-style: italic;
 }
