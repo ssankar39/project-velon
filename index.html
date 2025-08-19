@@ -16,7 +16,7 @@
   <nav class="nav-tabs">
     <button class="nav-tab active" data-module="bmr-tdee">BMR/TDEE Calculator</button>
     <button class="nav-tab disabled" data-module="calorie-tracker">Calorie Tracker</button>
-    <button class="nav-tab disabled" data-module="fasting-tracker">Fasting Tracker</button>
+    <button class="nav-tab" data-module="fasting-tracker">Fasting Tracker</button>
     <button class="nav-tab disabled" data-module="workout-tracker">Workout Tracker</button>
     <button class="nav-tab disabled" data-module="body-metrics">Body Metrics</button>
   </nav>
@@ -112,21 +112,54 @@
     </div>
   </div>
 
-  <!-- Module 3: Fasting Tracker (Coming Soon) -->
-  <div class="module" id="fasting-tracker">
-    <div class="calculator-card coming-soon">
-      <h2> Intermittent Fasting Tracker</h2>
-      <p>Monitor your fasting windows and track your intermittent fasting journey</p>
-      <ul class="feature-list">
-        <li>Popular fasting protocols (16:8, 18:6, 24hr, etc.)</li>
-        <li>Visual fasting timeline</li>
-        <li>Fasting streak tracking</li>
-        <li>Weight loss correlation</li>
-        <li>Personalized fasting insights</li>
-      </ul>
-      <p><strong>Coming Soon!</strong> This feature is currently in development.</p>
+<!-- Module 3: Fasting Tracker -->
+<div class="module" id="fasting-tracker">
+  <div class="calculator-card">
+    <h2>⏳ Intermittent Fasting Tracker</h2>
+    <p class="description">Track your fasting window and see progress in real time</p>
+
+    <!-- Fasting Form -->
+    <form id="fasting-form">
+      <!-- Protocol Selection -->
+      <div class="form-group">
+        <label>Fasting Protocol</label>
+        <select id="fasting-protocol">
+          <option value="16">16:8 (16 hours fast)</option>
+          <option value="18">18:6 (18 hours fast)</option>
+          <option value="20">20:4 (20 hours fast)</option>
+          <option value="24">24 Hours Fast</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+
+      <!-- Custom Hours -->
+      <div class="form-group" id="custom-hours-group" style="display:none;">
+        <label>Custom Fasting Hours</label>
+        <input type="number" id="custom-hours" min="1" max="72" placeholder="Enter hours">
+      </div>
+
+      <!-- Start Time -->
+      <div class="form-group">
+        <label>Start Time</label>
+        <input type="datetime-local" id="fasting-start" required>
+      </div>
+
+      <button type="submit">Start Fast</button>
+    </form>
+
+    <!-- Fasting Status -->
+    <div id="fasting-status" class="result" style="display: none;"></div>
+
+    <!-- Progress Bar -->
+    <div id="fasting-progress">
+      <div id="progress-container">
+        <div id="progress-bar"></div>
+      </div>
+      <p id="time-remaining"></p>
     </div>
   </div>
+</div>
+
 
   <!-- Module 4: Workout Tracker (Coming Soon) -->
   <div class="module" id="workout-tracker">

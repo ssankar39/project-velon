@@ -297,4 +297,32 @@ button:disabled {
   .coming-soon {
     padding: 40px 20px;
   }
+
+  /* Fasting Tracker Progress */
+#fasting-progress {
+  margin-top: 20px;
+  display: none; /* hidden until fast starts */
+}
+
+#progress-container {
+  background: #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  height: 20px;
+}
+
+#progress-bar {
+  height: 20px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  width: 0%;
+  transition: width 0.5s ease;
+}
+
+#time-remaining {
+  text-align: center;
+  margin-top: 10px;
+  font-weight: 500;
+  color: #444;
+}
+
 }

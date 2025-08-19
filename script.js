@@ -201,6 +201,113 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // ==============================================
+  // FASTING TRACKER MODULE
+  // ==============================================
+  
+  function initFastingTracker() {
+    // Elements
+    const fastingForm = document.getElementById("fasting-form");
+    const fastingProtocol = document.getElementById("fasting-protocol");
+    const customHoursGroup = document.getElementById("custom-hours-group");
+    const customHours = document.getElementById("custom-hours");
+    const fastingStart = document.getElementById("fasting-start");
+    const fastingStatus = document.getElementById("fasting-status");
+    const fastingProgress = document.getElementById("fasting-progress");
+    const progressBar = document.getElementById("progress-bar");
+    const timeRemaining = document.getElementById("time-remaining");
+
+    let fastingEnd = null;
+    let timer = null;
+
+    // Show/hide custom hours input
+    if (fastingProtocol) {
+      fastingProtocol.addEventListener("change", () => {
+        if (customHoursGroup) {
+          customHoursGroup.style.display = fastingProtocol.value === "custom" ? "block" : "none";
+        }
+      });
+    }
+
+    // Handle form submission
+    if (fastingForm) {
+      fastingForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        // Determine fasting duration
+        let fastingHours = parseInt(fastingProtocol.value);
+        if (fastingProtocol.value === "custom") {
+          fastingHours = parseInt(customHours.value);
+          if (isNaN(fastingHours) || fastingHours < 1 || fastingHours > 72) {
+            alert("Please enter a valid fasting duration between 1 and 72 hours.");
+            return;
+          }
+        }
+
+        // Validate start time
+        const startTime = new Date(fastingStart.value);
+        if (isNaN(startTime.getTime())) {
+          alert("Please enter a valid start time.");
+          return;
+        }
+
+        // Calculate end time
+        fastingEnd = new Date(startTime.getTime() + fastingHours * 60 * 60 * 1000);
+
+        // Show status and progress
+        if (fastingStatus) {
+          fastingStatus.style.display = "block";
+          fastingStatus.innerHTML = `✅ Fasting started! Ends at <b>${fastingEnd.toLocaleString()}</b>`;
+        }
+        
+        if (fastingProgress) {
+          fastingProgress.style.display = "block";
+        }
+
+        // Hide form after starting fast
+        fastingForm.style.display = "none";
+
+        if (timer) clearInterval(timer);
+        timer = setInterval(updateProgress, 1000);
+        updateProgress();
+      });
+    }
+
+    // Update progress bar and remaining time
+    function updateProgress() {
+      if (!fastingEnd || !fastingStart) return;
+
+      const now = new Date();
+      const startTime = new Date(fastingStart.value);
+      const total = fastingEnd - startTime;
+      const elapsed = now - startTime;
+      const remaining = fastingEnd - now;
+
+      if (remaining <= 0) {
+        clearInterval(timer);
+        if (progressBar) progressBar.style.width = "100%";
+        if (timeRemaining) timeRemaining.textContent = "🎉 Fasting complete!";
+        return;
+      }
+
+      const percent = Math.min(Math.max((elapsed / total) * 100, 0), 100);
+      if (progressBar) progressBar.style.width = percent + "%";
+
+      const hrs = Math.floor(remaining / (1000 * 60 * 60));
+      const mins = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+      const secs = Math.floor((remaining % (1000 * 60)) / 1000);
+
+      if (timeRemaining) {
+        timeRemaining.textContent = `⏳ Time remaining: ${hrs}h ${mins}m ${secs}s`;
+      }
+    }
+
+    console.log("Fasting Tracker module initialized");
+  }
+
+  // Initialize fasting tracker
+  initFastingTracker();
+
+  // ==============================================
   // FUTURE MODULE PLACEHOLDERS
   // ==============================================
   
@@ -212,16 +319,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // - Progress tracking
     // - Goal setting
     console.log('Calorie Tracker module ready for development');
-  }
-
-  // Fasting Tracker Module (Coming Soon)
-  function initFastingTracker() {
-    // This will contain the fasting tracking functionality
-    // - Timer functionality
-    // - Fasting protocols
-    // - Streak tracking
-    // - Analytics
-    console.log('Fasting Tracker module ready for development');
   }
 
   // Workout Tracker Module (Coming Soon)
@@ -243,13 +340,6 @@ document.addEventListener("DOMContentLoaded", () => {
     // - BMI calculation
     console.log('Body Metrics Tracker module ready for development');
   }
-
-  // Initialize future modules when they're ready
-  // Uncomment these when modules are developed
-  // initCalorieTracker();
-  // initFastingTracker();
-  // initWorkoutTracker();
-  // initBodyMetricsTracker();
 
   // ==============================================
   // UTILITY FUNCTIONS
