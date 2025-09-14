@@ -487,7 +487,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return null;
   }
 
-  // Expose utility functions and state for module development
+
   window.FitnessTracker = {
     appState,
     enableModuleTab,
