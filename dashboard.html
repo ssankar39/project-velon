@@ -8,6 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.263.1/umd/lucide.min.js"></script>
   <script src="dashboard.js" defer></script>
 </head>
+
 <body>
   <!-- Header -->
   <header class="header">
@@ -526,5 +527,17 @@
       <p class="coming-soon-text"><strong>Coming Soon!</strong> This feature is currently in development.</p>
     </div>
   </div>
+
+  <script type="module">
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-auth.js";
+
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          document.body.innerHTML += `<p>Welcome, ${user.email}</p>`;
+        } else {
+          window.location.href = "login.html"; // redirect if logged out
+        }
+    });
+  </script>
 </body>
 </html>
