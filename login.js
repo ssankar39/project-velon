@@ -67,9 +67,6 @@ document.addEventListener('DOMContentLoaded', function() {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       console.log("User signed in successfully:", userCredential.user);
       
-      messageElement.innerText = "✅ Logged in successfully!";
-      messageElement.style.color = "green";
-      
       // Clear form
       emailInput.value = "";
       passwordInput.value = "";
@@ -80,14 +77,34 @@ document.addEventListener('DOMContentLoaded', function() {
       }, 1000);
       
     } catch (error) {
-      console.error("Firebase login error:", error);
-      messageElement.innerText = "❌ " + error.message;
+      console.error("Incorrect Email/Password!", error);
+
+      // Map common Firebase auth error codes to friendly messages
+      const code = error.code || "";
+      let friendly = "An error occurred during sign in.";
+
+      if (code.includes('auth/wrong-password')) {
+        friendly = '❌ Wrong password. Please try again.';
+      } else if (code.includes('auth/user-not-found')) {
+        friendly = '❌ No account found for that email.';
+      } else if (code.includes('auth/invalid-email')) {
+        friendly = '❌ The email address is not valid.';
+      } else if (code.includes('auth/network-request-failed')) {
+        friendly = '❌ Network error. Check your connection and try again.';
+      } else if (code.includes('auth/too-many-requests')) {
+        friendly = '❌ Too many failed attempts. Please try again later.';
+      } else if (error.message) {
+        // Fallback to the message if available
+        friendly = 'Invalid Email/Password. Please try again.';
+      }
+
+      messageElement.innerText = friendly;
       messageElement.style.color = "red";
     } finally {
       // Re-enable submit button
       if (submitButton) {
         submitButton.disabled = false;
-        submitButton.innerText = "Sign In";
+        submitButton.innerText = "Login";
       }
     }
   });
