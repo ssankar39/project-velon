@@ -421,6 +421,113 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   // ==============================================
+  // FOOD/CALORIE TRACKER MODULE
+  // ==============================================
+  
+  function initFoodTracker() {
+    const foodForm = document.getElementById('food-form');
+    const foodNameInput = document.getElementById('food-name');
+    const foodCaloriesInput = document.getElementById('food-calories');
+    const mealTypeSelect = document.getElementById('meal-type');
+    const mealsList = document.getElementById('meals-list');
+    const totalCaloriesElement = document.getElementById('total-calories');
+
+    // Array to store meals
+    let mealsArray = [];
+
+    // Add food event listener
+    if (foodForm) {
+      foodForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+
+        // Get form values
+        const foodName = foodNameInput.value.trim();
+        const foodCalories = parseInt(foodCaloriesInput.value);
+        const mealType = mealTypeSelect.value;
+
+        // Validate inputs
+        if (!foodName || isNaN(foodCalories) || foodCalories <= 0) {
+          alert('Please fill in all fields with valid values');
+          return;
+        }
+
+        // Create meal object
+        const meal = {
+          id: Date.now(),
+          name: foodName,
+          calories: foodCalories,
+          type: mealType
+        };
+
+        // Add meal to array
+        mealsArray.push(meal);
+
+        // Add meal to UI
+        addMealToUI(meal);
+
+        // Update total calories
+        updateTotalCalories();
+
+        // Clear form
+        foodForm.reset();
+        foodNameInput.focus();
+      });
+    }
+
+    function addMealToUI(meal) {
+      // Capitalize meal type
+      const capitalizedType = meal.type.charAt(0).toUpperCase() + meal.type.slice(1);
+
+      const mealElement = document.createElement('div');
+      mealElement.className = 'meal-item';
+      mealElement.dataset.mealId = meal.id;
+      mealElement.innerHTML = `
+        <div class="meal-info">
+          <p class="meal-name">${meal.name}</p>
+          <p class="meal-type">${capitalizedType}</p>
+        </div>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+          <p class="meal-calories">${meal.calories} cal</p>
+          <button class="btn-delete-meal" style="background: none; border: none; cursor: pointer; color: #ef4444; font-size: 1.25rem;">×</button>
+        </div>
+      `;
+
+      // Add delete functionality
+      const deleteBtn = mealElement.querySelector('.btn-delete-meal');
+      deleteBtn.addEventListener('click', () => {
+        deleteMeal(meal.id);
+      });
+
+      if (mealsList) {
+        mealsList.appendChild(mealElement);
+      }
+    }
+
+    function deleteMeal(mealId) {
+      // Remove from array
+      mealsArray = mealsArray.filter(meal => meal.id !== mealId);
+
+      // Remove from UI
+      const mealElement = document.querySelector(`[data-meal-id="${mealId}"]`);
+      if (mealElement) {
+        mealElement.remove();
+      }
+
+      // Update total calories
+      updateTotalCalories();
+    }
+
+    function updateTotalCalories() {
+      const total = mealsArray.reduce((sum, meal) => sum + meal.calories, 0);
+      if (totalCaloriesElement) {
+        totalCaloriesElement.textContent = total.toLocaleString();
+      }
+    }
+
+    console.log("Food Tracker module initialized");
+  }
+
+  // ==============================================
   // INPUT ENHANCEMENT
   // ==============================================
   
@@ -454,6 +561,9 @@ document.addEventListener("DOMContentLoaded", () => {
   
   // Initialize fasting tracker
   initFastingTracker();
+
+  // Initialize food tracker
+  initFoodTracker();
 
   // ==============================================
   // UTILITY FUNCTIONS
