@@ -10,7 +10,7 @@
 </head>
 
 <body>
-  <!-- Header -->
+  <!-- Header with Navigation -->
   <header class="header">
     <div class="header-content">
       <div class="logo">
@@ -19,41 +19,43 @@
         </div>
         <h1>Dashboard</h1>
       </div>
+      
+      <nav class="nav-tabs">
+        <button class="nav-tab active" data-module="dashboard">
+          <i data-lucide="bar-chart-3"></i>
+          <span>Dashboard</span>
+        </button>
+        <button class="nav-tab disabled" data-module="calories">
+          <i data-lucide="utensils"></i>
+          <span>Calories</span>
+          <span class="coming-soon-badge">Soon</span>
+        </button>
+        <button class="nav-tab" data-module="calculator">
+          <i data-lucide="timer"></i>
+          <span>Calculator</span>
+        </button>
+        <button class="nav-tab" data-module="fasting">
+          <i data-lucide="timer"></i>
+          <span>Fasting</span>
+        </button>
+        <button class="nav-tab disabled" data-module="workouts">
+          <i data-lucide="dumbbell"></i>
+          <span>Workouts</span>
+          <span class="coming-soon-badge">Soon</span>
+        </button>
+        <button class="nav-tab disabled" data-module="metrics">
+          <i data-lucide="target"></i>
+          <span>Metrics</span>
+          <span class="coming-soon-badge">Soon</span>
+        </button>
+      </nav>
     </div>
   </header>
-
-  <!-- Navigation -->
-  <nav class="nav-tabs">
-    <button class="nav-tab active" data-module="dashboard">
-      <i data-lucide="bar-chart-3"></i>
-      <span>Dashboard</span>
-    </button>
-    <button class="nav-tab disabled" data-module="calories">
-      <i data-lucide="utensils"></i>
-      <span>Calories</span>
-      <span class="coming-soon-badge">Soon</span>
-    </button>
-    <button class="nav-tab" data-module="fasting">
-      <i data-lucide="timer"></i>
-      <span>Fasting</span>
-    </button>
-    <button class="nav-tab disabled" data-module="workouts">
-      <i data-lucide="dumbbell"></i>
-      <span>Workouts</span>
-      <span class="coming-soon-badge">Soon</span>
-    </button>
-    <button class="nav-tab disabled" data-module="metrics">
-      <i data-lucide="target"></i>
-      <span>Metrics</span>
-      <span class="coming-soon-badge">Soon</span>
-    </button>
-  </nav>
 
   <!-- Dashboard Module -->
   <div class="module active" id="dashboard">
     <div class="module-header">
       <h2>Your Fitness Dashboard</h2>
-      <p>Track your health and fitness journey in one place</p>
     </div>
 
     <!-- Stats Grid -->
@@ -169,78 +171,16 @@
         </p>
       </div>
     </div>
-
-    <!-- BMR/TDEE Calculator -->
-    <div class="calculator-card">
-      <div class="card-header">
-        <i data-lucide="calculator"></i>
-        <h3>BMR/TDEE Calculator</h3>
-      </div>
-      
-      <form id="bmr-form">
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Age (years)</label>
-            <input type="number" id="age" placeholder="Enter your age" required>
-          </div>
-
-          <div class="form-group">
-            <label>Weight</label>
-            <div class="input-row">
-              <input type="number" id="weight" placeholder="Enter your weight" required>
-              <select id="weight-unit">
-                <option value="lbs">lbs</option>
-                <option value="kg">kg</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Height</label>
-            <div class="input-row">
-              <input type="number" id="height" placeholder="Enter your height" required>
-              <select id="height-unit">
-                <option value="in">in</option>
-                <option value="cm">cm</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Gender</label>
-            <select id="gender">
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Activity Level</label>
-          <select id="activity-level">
-            <option value="1.2">Sedentary (little or no exercise)</option>
-            <option value="1.375">Lightly active (light exercise 1-3 days/week)</option>
-            <option value="1.55">Moderately active (moderate exercise 3-5 days/week)</option>
-            <option value="1.725">Very active (hard exercise 6-7 days/week)</option>
-            <option value="1.9">Super active (very hard exercise, physical job)</option>
-          </select>
-        </div>
-
-        <button type="submit" class="btn-primary">Calculate BMR & TDEE</button>
-      </form>
-      
-      <div id="bmr-result" class="result" style="display: none;"></div>
-    </div>
   </div>
 
   <!-- Fasting Tracker Module -->
   <div class="module" id="fasting">
     <div class="module-header">
       <h2>Fasting Tracker</h2>
-      <p>Track your intermittent fasting progress</p>
     </div>
 
-    <div class="calculator-card">
+    <div class="calculator-grid">
+      <div class="calculator-card">
       <div class="card-header">
         <i data-lucide="timer"></i>
         <h3>Intermittent Fasting Tracker</h3>
@@ -292,17 +232,18 @@
         <button id="end-fast-btn" class="btn-danger">End Fast Early</button>
       </div>
     </div>
+    </div>
   </div>
 
   <!-- Calculator Module -->
   <div class="module" id="calculator">
     <div class="module-header">
-      <h2>Fitness Calculator</h2>
-      <p>Calculate your BMR, TDEE, and other fitness metrics</p>
+      <h2>Calculators</h2>
     </div>
 
-    <!-- BMR/TDEE Calculator -->
-    <div class="calculator-card">
+    <div class="calculator-grid">
+      <!-- BMR/TDEE Calculator -->
+      <div class="calculator-card">
       <div class="card-header">
         <i data-lucide="calculator"></i>
         <h3>BMR & TDEE Calculator</h3>
@@ -477,6 +418,7 @@
       </form>
       
       <div id="bodyfat-result" class="result" style="display: none;"></div>
+    </div>
     </div>
   </div>
 
