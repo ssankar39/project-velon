@@ -6,14 +6,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
+    "@prisma/client": "^5.7.0",
     "firebase": "^10.7.0",
     "lucide-react": "^0.344.0",
     "next": "^14.0.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "socket.io-client": "^4.7.2",
     "typescript": "^5.3.3"
   },
   "devDependencies": {
@@ -24,6 +30,7 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.0",
+    "prisma": "^5.7.0",
     "tailwindcss": "^4.1.16"
   }
 }
