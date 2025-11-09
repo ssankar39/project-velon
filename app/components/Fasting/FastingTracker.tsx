@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { FastingState } from '@/app/types';
-import { Clock } from 'lucide-react';
+import { Clock, Loader2 } from 'lucide-react';
 
 interface FastingTrackerProps {
   onFastingUpdate: (state: FastingState, progress: number) => void;
@@ -12,6 +12,12 @@ interface FormState {
   protocol: '16' | '18' | '20' | '24' | 'custom';
   customHours: number;
   startTime: string;
+}
+
+interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
 }
 
 export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate }) => {
@@ -31,6 +37,20 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
 
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [sessionId, setSessionId] = useState<string>('');
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setCurrentUser(JSON.parse(storedUser));
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+      }
+    }
+  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -74,7 +94,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
     return () => clearInterval(interval);
   }, [fastingState, onFastingUpdate]);
 
-  const handleStartFast = (e: React.FormEvent) => {
+  const handleStartFast = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const hours =
@@ -86,31 +106,87 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
       return;
     }
 
-    const endTime = new Date(startTime.getTime() + hours * 60 * 60 * 1000);
+    if (!currentUser) {
+      alert('User not authenticated');
+      return;
+    }
 
-    setFastingState({
-      isActive: true,
-      startTime,
-      endTime,
-      protocol: formState.protocol,
-      customHours: formState.protocol === 'custom' ? formState.customHours : null,
-    });
+    try {
+      setLoading(true);
+      const endTime = new Date(startTime.getTime() + hours * 60 * 60 * 1000);
 
-    setTimeRemaining('');
-    setProgressPercent(0);
+      // Save to database
+      const response = await fetch('/api/fasting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.email,
+          protocol: formState.protocol === 'custom' ? `${formState.customHours}` : formState.protocol,
+          startTime: startTime.toISOString(),
+          endTime: endTime.toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to start fasting session');
+      }
+
+      const session = await response.json();
+      setSessionId(session.id);
+
+      setFastingState({
+        isActive: true,
+        startTime,
+        endTime,
+        protocol: formState.protocol,
+        customHours: formState.protocol === 'custom' ? formState.customHours : null,
+      });
+
+      setTimeRemaining('');
+      setProgressPercent(0);
+    } catch (error) {
+      console.error('Error starting fasting session:', error);
+      alert('Failed to start fasting session');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEndFast = () => {
-    setFastingState({
-      isActive: false,
-      startTime: null,
-      endTime: null,
-      protocol: formState.protocol,
-      customHours: null,
-    });
-    setTimeRemaining('');
-    setProgressPercent(0);
-    setFormState({ ...formState, startTime: '' });
+  const handleEndFast = async () => {
+    if (!sessionId || !currentUser) return;
+
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/fasting/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isActive: false,
+          completedAt: new Date().toISOString(),
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to end fasting session');
+      }
+
+      setFastingState({
+        isActive: false,
+        startTime: null,
+        endTime: null,
+        protocol: formState.protocol,
+        customHours: null,
+      });
+      setTimeRemaining('');
+      setProgressPercent(0);
+      setFormState({ ...formState, startTime: '' });
+      setSessionId('');
+    } catch (error) {
+      console.error('Error ending fasting session:', error);
+      alert('Failed to end fasting session');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -138,7 +214,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
                       protocol: e.target.value as '16' | '18' | '20' | '24' | 'custom',
                     })
                   }
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="16">16:8 (16 hours fast)</option>
                   <option value="18">18:6 (18 hours fast)</option>
@@ -161,7 +237,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
                     onChange={(e) =>
                       setFormState({ ...formState, customHours: parseInt(e.target.value) || 0 })
                     }
-                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                    className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                     placeholder="Enter hours"
                   />
                 </div>
@@ -177,15 +253,23 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
                 value={formState.startTime}
                 onChange={(e) => setFormState({ ...formState, startTime: e.target.value })}
                 required
-                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
               />
             </div>
 
             <button
               type="submit"
-              className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all"
+              disabled={loading}
+              className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Start Fast
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Starting...
+                </>
+              ) : (
+                'Start Fast'
+              )}
             </button>
           </form>
         ) : (
@@ -209,9 +293,17 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
 
             <button
               onClick={handleEndFast}
-              className="w-full px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors"
+              disabled={loading}
+              className="w-full px-6 py-3 bg-red-500 text-white font-semibold rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              End Fast Early
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Ending...
+                </>
+              ) : (
+                'End Fast Early'
+              )}
             </button>
           </div>
         )}

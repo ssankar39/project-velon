@@ -22,8 +22,8 @@ const modules = [
   { id: 'calories' as ModuleType, label: 'Calories', icon: Utensils, disabled: false },
   { id: 'calculator' as ModuleType, label: 'Calculator', icon: Timer, disabled: false },
   { id: 'fasting' as ModuleType, label: 'Fasting', icon: Timer, disabled: false },
-  { id: 'workouts' as ModuleType, label: 'Workouts', icon: Dumbbell, disabled: true },
-  { id: 'metrics' as ModuleType, label: 'Metrics', icon: Target, disabled: true },
+  { id: 'workouts' as ModuleType, label: 'Workouts', icon: Dumbbell, disabled: false },
+  { id: 'metrics' as ModuleType, label: 'Metrics', icon: Target, disabled: false },
 ];
 
 export const NavTabs: React.FC<NavTabsProps> = ({ onModuleChange, activeModule, mobile = false }) => {

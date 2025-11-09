@@ -1,15 +1,20 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { auth } from '@/app/types/firebase';
 import { Header } from '@/app/components/Header';
 import { DashboardModule } from '@/app/components/Dashboard/DashboardModule';
 import { CalorieTracker } from '@/app/components/Calories/CalorieTracker';
 import CalculatorModule from '@/app/components/Calculators/CalculatorModule';
 import { FastingTracker } from '@/app/components/Fasting/FastingTracker';
-import { WorkoutsModule, MetricsModule } from '@/app/components/ComingSoon/ComingSoonModule';
+import WorkoutsModule from '@/app/components/Workouts/WorkoutsModule';
+import MetricsModule from '@/app/components/Metrics/MetricsModule';
 import { UserStats, Meal, FastingState } from '@/app/types';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
+}
 
 type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics';
 
@@ -30,20 +35,24 @@ export default function Home() {
   const [, setMeals] = useState<Meal[]>([]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
+    // Check localStorage for user
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        JSON.parse(storedUser) as AuthUser;
         setLoading(false);
-      } else {
-        window.location.href = '/signup';
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+        window.location.href = '/login';
       }
-    });
-
-    return () => unsubscribe();
+    } else {
+      window.location.href = '/login';
+    }
   }, []);
 
-  const handleLogout = async () => {
-    await signOut(auth);
-    window.location.href = '/signup';
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    window.location.href = '/login';
   };
 
   const handleMealsUpdate = (updatedMeals: Meal[]) => {

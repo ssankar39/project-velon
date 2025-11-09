@@ -1,8 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '@/app/types/firebase';
 import { Mail, Lock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -26,19 +24,30 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, form.email, form.password);
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: form.email,
+          password: form.password,
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        setMessage({ text: `❌ ${errorData.error || 'Login failed'}`, type: 'error' });
+        return;
+      }
+
+      const data = await res.json();
+      
+      // Store user info in localStorage
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
       setMessage({ text: '✅ Login successful!', type: 'success' });
       setTimeout(() => (window.location.href = '/'), 1000);
-    } catch (error: unknown) {
-      const authError = error as { code?: string; message?: string };
-      const errorMap: Record<string, string> = {
-        'auth/user-not-found': '❌ Email not found',
-        'auth/wrong-password': '❌ Wrong password',
-        'auth/invalid-email': '❌ Invalid email address',
-        'auth/user-disabled': '❌ Account has been disabled',
-        'auth/network-request-failed': '❌ Network error. Try again.',
-      };
-      setMessage({ text: errorMap[authError.code || ''] || `❌ ${authError.message}`, type: 'error' });
+    } catch {
+      setMessage({ text: '❌ Network error. Try again.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -101,7 +110,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full mt-6 bg-green-500 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-50"
+          className="w-full mt-6 bg-green-600 text-white font-semibold py-3 rounded-lg hover:bg-green-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? (
             <>
@@ -113,9 +122,9 @@ export default function LoginPage() {
           )}
         </button>
 
-        <p className="text-center mt-6 text-sm text-gray-700">
+        <p className="text-center text-gray-600 mt-4 text-sm">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-green-700 font-semibold hover:underline">
+          <Link href="/signup" className="text-green-600 font-semibold hover:underline">
             Sign up
           </Link>
         </p>

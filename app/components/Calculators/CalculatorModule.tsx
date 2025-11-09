@@ -130,7 +130,7 @@ const CalculatorModule: React.FC = () => {
                   name="age"
                   placeholder="Enter your age"
                   required
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
               </div>
 
@@ -138,7 +138,7 @@ const CalculatorModule: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
                 <select
                   name="gender"
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -154,11 +154,11 @@ const CalculatorModule: React.FC = () => {
                   name="weight"
                   placeholder="Enter weight"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
                 <select
                   name="weight-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="lbs">lbs</option>
                   <option value="kg">kg</option>
@@ -174,11 +174,11 @@ const CalculatorModule: React.FC = () => {
                   name="height"
                   placeholder="Enter height"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
                 <select
                   name="height-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -192,7 +192,7 @@ const CalculatorModule: React.FC = () => {
               </label>
               <select
                 name="activity-level"
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
               >
                 <option value="1.2">Sedentary (little or no exercise)</option>
                 <option value="1.375">Lightly active (light exercise 1-3 days/week)</option>
@@ -264,11 +264,11 @@ const CalculatorModule: React.FC = () => {
                   name="bmi-weight"
                   placeholder="Enter weight"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
                 <select
                   name="bmi-weight-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="lbs">lbs</option>
                   <option value="kg">kg</option>
@@ -284,11 +284,11 @@ const CalculatorModule: React.FC = () => {
                   name="bmi-height"
                   placeholder="Enter height"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
                 <select
                   name="bmi-height-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -342,7 +342,7 @@ const CalculatorModule: React.FC = () => {
               <select
                 name="bf-gender"
                 required
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
               >
                 <option value="">Select Gender</option>
                 <option value="male">Male</option>
@@ -358,11 +358,11 @@ const CalculatorModule: React.FC = () => {
                   name="bf-height"
                   placeholder="Height"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
                 <select
                   name="bf-height-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -380,11 +380,11 @@ const CalculatorModule: React.FC = () => {
                   name="bf-waist"
                   placeholder="Waist"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
                 <select
                   name="bf-waist-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -400,11 +400,11 @@ const CalculatorModule: React.FC = () => {
                   name="bf-neck"
                   placeholder="Neck"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
                 />
                 <select
                   name="bf-neck-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -420,11 +420,11 @@ const CalculatorModule: React.FC = () => {
                 type="number"
                 name="bf-hip"
                 placeholder="Hip"
-                className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
               />
               <select
                 name="bf-hip-unit"
-                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
               >
                 <option value="in">in</option>
                 <option value="cm">cm</option>

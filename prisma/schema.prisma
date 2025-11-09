@@ -12,8 +12,8 @@ datasource db {
 
 model User {
   id                String    @id @default(cuid())
-  firebaseId        String    @unique // Firebase UID
   email             String    @unique
+  password          String    // Hashed password
   name              String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
@@ -24,8 +24,6 @@ model User {
   workouts          Workout[]
   metrics           Metric[]
   userPreferences   UserPreferences?
-  
-  @@index([firebaseId])
 }
 
 model UserPreferences {

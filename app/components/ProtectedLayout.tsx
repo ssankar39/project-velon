@@ -1,13 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '@/app/types/firebase';
 
 interface AuthUser {
-  uid: string;
+  id: string;
   email: string;
-  createdAt: Date;
+  name?: string;
 }
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
@@ -15,21 +13,20 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (currentUser) {
-        setUser({
-          uid: currentUser.uid,
-          email: currentUser.email || '',
-          createdAt: new Date(),
-        });
+    // Check if user is stored in localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
         setLoading(false);
-      } else {
-        setUser(null);
-        window.location.href = '/signup';
+      } catch (e) {
+        console.error('Failed to parse stored user:', e);
+        window.location.href = '/login';
       }
-    });
-
-    return () => unsubscribe();
+    } else {
+      setUser(null);
+      window.location.href = '/login';
+    }
   }, []);
 
   if (loading) {

@@ -3,7 +3,7 @@ export type Gender = 'male' | 'female';
 export type FastingProtocol = '16' | '18' | '20' | '24' | 'custom';
 
 export interface Meal {
-  id: number;
+  id: string;
   name: string;
   calories: number;
   type: MealType;
