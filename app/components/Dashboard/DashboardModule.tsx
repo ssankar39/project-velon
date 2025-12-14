@@ -35,11 +35,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
   useEffect(() => {
     if (currentUser) {
       fetchStats();
-      // Refresh stats every 30 seconds
-      const interval = setInterval(fetchStats, 30000);
-      return () => clearInterval(interval);
     }
-    return undefined;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
 

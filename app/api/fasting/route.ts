@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
 
-/**
- * POST /api/fasting - Start/log a fasting session
- * Body: { userId: string (email), protocol: string, startTime: ISO date, endTime?: ISO date, completedAt?: ISO date }
- */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -17,10 +13,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: userId },
-    });
+    const usersCollection = await getCollection('User');
+    const fastingCollection = await getCollection('FastingSession');
+
+    const user = await usersCollection.findOne({ email: userId });
 
     if (!user) {
       return NextResponse.json(
@@ -29,18 +25,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const session = await prisma.fastingSession.create({
-      data: {
-        userId: user.id,
-        protocol,
-        startTime: new Date(startTime),
-        endTime: endTime ? new Date(endTime) : null,
-        completedAt: completedAt ? new Date(completedAt) : null,
-        isActive: !completedAt,
-      },
+    const result = await fastingCollection.insertOne({
+      userId: user._id.toString(),
+      protocol,
+      startTime: new Date(startTime),
+      endTime: endTime ? new Date(endTime) : null,
+      completedAt: completedAt ? new Date(completedAt) : null,
+      isActive: !completedAt,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    return NextResponse.json(session, { status: 201 });
+    return NextResponse.json({ id: result.insertedId.toString(), ...body }, { status: 201 });
   } catch (error) {
     console.error('Error creating fasting session:', error);
     return NextResponse.json(
@@ -50,10 +46,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * GET /api/fasting - Fetch fasting sessions for a user
- * Query params: userId (required - email)
- */
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -66,19 +58,16 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get the database user ID from email
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const usersCollection = await getCollection('User');
+    const fastingCollection = await getCollection('FastingSession');
+
+    const user = await usersCollection.findOne({ email });
 
     if (!user) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const sessions = await prisma.fastingSession.findMany({
-      where: { userId: user.id },
-      orderBy: { startTime: 'desc' },
-    });
+    const sessions = await fastingCollection.find({ userId: user._id.toString() }).sort({ startTime: -1 }).toArray();
 
     return NextResponse.json(sessions, { status: 200 });
   } catch (error) {

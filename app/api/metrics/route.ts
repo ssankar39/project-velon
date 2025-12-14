@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { ObjectId } from 'mongodb';
 
 /**
  * POST /api/metrics - Log a weight/body metrics entry
@@ -10,41 +12,55 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { userId, weight, bodyFat, bmr, tdee, bmi } = body;
 
+    console.log('POST /api/metrics - Received body:', body);
+
     if (!userId) {
+      console.error('Missing userId');
       return NextResponse.json(
         { error: 'userId (email) is required' },
         { status: 400 }
       );
     }
 
+    const usersCollection = await getCollection('User');
+    const metricsCollection = await getCollection('Metric');
+
     // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: userId },
-    });
+    console.log('Looking for user with email:', userId);
+    const user = await usersCollection.findOne({ email: userId });
 
     if (!user) {
+      console.error('User not found for email:', userId);
+      // Debug: Show all users in the collection
+      const allUsers = await usersCollection.find({}).toArray();
+      console.log('All users in database:', allUsers.map(u => ({ id: u._id, email: u.email, name: u.name })));
       return NextResponse.json(
-        { error: 'User not found' },
+        { error: 'User not found', details: `No user with email ${userId}. Available users: ${allUsers.map(u => u.email).join(', ')}` },
         { status: 404 }
       );
     }
 
-    const metric = await prisma.metric.create({
-      data: {
-        userId: user.id,
-        weight: weight ? parseFloat(weight) : null,
-        bodyFat: bodyFat ? parseFloat(bodyFat) : null,
-        bmr: bmr ? parseFloat(bmr) : null,
-        tdee: tdee ? parseFloat(tdee) : null,
-        bmi: bmi ? parseFloat(bmi) : null,
-      },
+    console.log('User found:', user._id);
+
+    const metric = await metricsCollection.insertOne({
+      userId: user._id.toString(),
+      weight: weight ? parseFloat(weight) : null,
+      bodyFat: bodyFat ? parseFloat(bodyFat) : null,
+      bmr: bmr ? parseFloat(bmr) : null,
+      tdee: tdee ? parseFloat(tdee) : null,
+      bmi: bmi ? parseFloat(bmi) : null,
+      timestamp: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    return NextResponse.json(metric, { status: 201 });
+    console.log('Metric inserted:', metric.insertedId);
+    return NextResponse.json({ id: metric.insertedId.toString(), ...body }, { status: 201 });
   } catch (error) {
-    console.error('Error creating metric:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('Error creating metric:', errorMessage);
     return NextResponse.json(
-      { error: 'Failed to create metric' },
+      { error: 'Failed to create metric', details: errorMessage },
       { status: 500 }
     );
   }
@@ -66,19 +82,20 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const usersCollection = await getCollection('User');
+    const metricsCollection = await getCollection('Metric');
+
     // Get the database user ID from email
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const user = await usersCollection.findOne({ email });
 
     if (!user) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const metrics = await prisma.metric.findMany({
-      where: { userId: user.id },
-      orderBy: { timestamp: 'desc' },
-    });
+    const metrics = await metricsCollection
+      .find({ userId: user._id.toString() })
+      .sort({ timestamp: -1 })
+      .toArray();
 
     return NextResponse.json(metrics, { status: 200 });
   } catch (error) {

@@ -77,29 +77,40 @@ export const MetricsModule: React.FC = () => {
 
     try {
       setLoading(true);
+      const metricData = {
+        userId: currentUser.email,
+        weight: formState.weight ? parseFloat(formState.weight) : null,
+        bodyFat: formState.bodyFat ? parseFloat(formState.bodyFat) : null,
+        bmi: formState.bmi ? parseFloat(formState.bmi) : null,
+        bmr: formState.bmr ? parseFloat(formState.bmr) : null,
+        tdee: formState.tdee ? parseFloat(formState.tdee) : null,
+      };
+      console.log('Sending metric data:', metricData);
       const response = await fetch('/api/metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: currentUser.email,
-          weight: formState.weight ? parseFloat(formState.weight) : null,
-          bodyFat: formState.bodyFat ? parseFloat(formState.bodyFat) : null,
-          bmi: formState.bmi ? parseFloat(formState.bmi) : null,
-          bmr: formState.bmr ? parseFloat(formState.bmr) : null,
-          tdee: formState.tdee ? parseFloat(formState.tdee) : null,
-        }),
+        body: JSON.stringify(metricData),
       });
 
       if (!response.ok) {
-        throw new Error('Failed to add metric');
+        let errorData;
+        try {
+          errorData = await response.json();
+          console.error('API error response:', errorData);
+        } catch {
+          console.error('Failed to parse error response:', await response.text());
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        throw new Error(errorData.details || errorData.error || 'Failed to add metric');
       }
 
       const newMetric = await response.json();
       setMetrics([newMetric, ...metrics]);
       setFormState({ weight: '', bodyFat: '', bmi: '', bmr: '', tdee: '' });
     } catch (error) {
-      console.error('Error adding metric:', error);
-      alert('Failed to add metric');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('Error adding metric:', errorMessage);
+      alert(`Failed to add metric: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

@@ -9,7 +9,7 @@ import {
   Target,
 } from 'lucide-react';
 
-type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics';
+type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile';
 
 interface NavTabsProps {
   onModuleChange: (module: ModuleType) => void;

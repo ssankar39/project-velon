@@ -48,15 +48,16 @@ interface StatsGridProps {
 }
 
 export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
-  const fastingHours = Math.floor(stats.fastingProgress);
-  const fastingMinutes = Math.floor((stats.fastingProgress % 1) * 60);
+  const fastingProgress = stats.fastingProgress ?? 0;
+  const fastingHours = Math.floor(fastingProgress);
+  const fastingMinutes = Math.floor((fastingProgress % 1) * 60);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 px-4">
       <StatCard
         label="Calories Today"
-        value={stats.caloriesConsumed.toLocaleString()}
-        goal={stats.caloriesGoal.toLocaleString()}
+        value={(stats.caloriesConsumed ?? 0).toLocaleString()}
+        goal={(stats.caloriesGoal ?? 0).toLocaleString()}
         icon={<Utensils className="w-6 h-6 text-white" />}
         iconBg="bg-emerald-500"
       />
@@ -69,16 +70,16 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
       />
       <StatCard
         label="Workouts This Week"
-        value={stats.workoutsThisWeek}
-        goal={stats.workoutGoal}
+        value={stats.workoutsThisWeek ?? 0}
+        goal={stats.workoutGoal ?? 0}
         icon={<Activity className="w-6 h-6 text-white" />}
         iconBg="bg-purple-500"
       />
       <StatCard
         label="Current Weight"
-        value={stats.currentWeight}
+        value={stats.currentWeight ?? 0}
         unit="lbs"
-        change={`${stats.weightChange} lbs this month`}
+        change={`${stats.weightChange ?? 0} lbs this month`}
         icon={<TrendingDown className="w-6 h-6 text-white" />}
         iconBg="bg-amber-500"
       />

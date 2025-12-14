@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
 
-/**
- * POST /api/workouts - Add a new workout
- */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -16,10 +13,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: userId },
-    });
+    const usersCollection = await getCollection('User');
+    const workoutsCollection = await getCollection('Workout');
+
+    const user = await usersCollection.findOne({ email: userId });
 
     if (!user) {
       return NextResponse.json(
@@ -28,17 +25,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const workout = await prisma.workout.create({
-      data: {
-        userId: user.id,
-        name,
-        duration: parseInt(duration),
-        intensity,
-        caloriesBurned: caloriesBurned ? parseInt(caloriesBurned) : null,
-      },
+    const result = await workoutsCollection.insertOne({
+      userId: user._id.toString(),
+      name,
+      duration: parseInt(duration),
+      intensity,
+      caloriesBurned: caloriesBurned ? parseInt(caloriesBurned) : null,
+      timestamp: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    return NextResponse.json(workout, { status: 201 });
+    return NextResponse.json({ id: result.insertedId.toString(), ...body }, { status: 201 });
   } catch (error) {
     console.error('Error creating workout:', error);
     return NextResponse.json(
@@ -48,9 +46,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * GET /api/workouts - Fetch workouts for a user
- */
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -64,16 +59,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get the database user ID from email
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const usersCollection = await getCollection('User');
+    const workoutsCollection = await getCollection('Workout');
+
+    const user = await usersCollection.findOne({ email });
 
     if (!user) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const whereClause: Record<string, unknown> = { userId: user.id };
+    // eslint-disable-next-line prefer-const
+    let query: Record<string, unknown> = { userId: user._id.toString() };
 
     if (date) {
       const startOfDay = new Date(date);
@@ -81,16 +77,13 @@ export async function GET(req: NextRequest) {
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
 
-      whereClause.timestamp = {
-        gte: startOfDay,
-        lte: endOfDay,
+      query.timestamp = {
+        $gte: startOfDay,
+        $lte: endOfDay,
       };
     }
 
-    const workouts = await prisma.workout.findMany({
-      where: whereClause,
-      orderBy: { timestamp: 'desc' },
-    });
+    const workouts = await workoutsCollection.find(query).sort({ timestamp: -1 }).toArray();
 
     return NextResponse.json(workouts, { status: 200 });
   } catch (error) {

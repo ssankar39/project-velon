@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
-/**
- * PATCH /api/fasting/[id] - Update a fasting session (mark as complete)
- */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -13,16 +11,27 @@ export async function PATCH(
     const body = await req.json();
     const { isActive, completedAt, endTime } = body;
 
-    const session = await prisma.fastingSession.update({
-      where: { id },
-      data: {
-        isActive: isActive ?? false,
-        completedAt: completedAt ? new Date(completedAt) : null,
-        endTime: endTime ? new Date(endTime) : null,
-      },
-    });
+    const fastingCollection = await getCollection('FastingSession');
+    const result = await fastingCollection.updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          isActive: isActive ?? false,
+          completedAt: completedAt ? new Date(completedAt) : null,
+          endTime: endTime ? new Date(endTime) : null,
+          updatedAt: new Date(),
+        },
+      }
+    );
 
-    return NextResponse.json(session, { status: 200 });
+    if (result.matchedCount === 0) {
+      return NextResponse.json(
+        { error: 'Fasting session not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Error updating fasting session:', error);
     return NextResponse.json(

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
-/**
- * DELETE /api/meals/[id] - Delete a meal
- */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -11,11 +9,19 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    const meal = await prisma.meal.delete({
-      where: { id },
+    const mealsCollection = await getCollection('Meal');
+    const result = await mealsCollection.deleteOne({
+      _id: new ObjectId(id),
     });
 
-    return NextResponse.json(meal, { status: 200 });
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: 'Meal not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Error deleting meal:', error);
     return NextResponse.json(

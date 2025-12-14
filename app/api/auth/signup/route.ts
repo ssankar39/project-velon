@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
-
-function generateId(): string {
-  return (Date.now().toString(36) + Math.random().toString(36).substr(2)).substr(0, 20);
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,10 +22,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const usersCollection = await getCollection('User');
+
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const existingUser = await usersCollection.findOne({ email });
 
     if (existingUser) {
       return NextResponse.json(
@@ -40,14 +36,17 @@ export async function POST(req: NextRequest) {
 
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const userId = generateId();
-    const now = new Date();
-    
-    // Create user with raw query
-    await (prisma.$executeRaw as (query: TemplateStringsArray, ...values: Array<string | Date>) => Promise<number>)`
-      INSERT INTO [dbo].[User] (id, email, password, name, createdAt, updatedAt)
-      VALUES (${userId}, ${email}, ${hashedPassword}, ${name || null}, ${now}, ${now})
-    `;
+
+    // Create user
+    const result = await usersCollection.insertOne({
+      email,
+      password: hashedPassword,
+      name: name || null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    const userId = result.insertedId.toString();
 
     return NextResponse.json(
       { message: 'User created successfully', user: { id: userId, email, name } },

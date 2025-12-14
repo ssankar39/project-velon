@@ -67,9 +67,9 @@ interface ProgressGridProps {
 }
 
 export const ProgressGrid: React.FC<ProgressGridProps> = ({ stats }) => {
-  const caloriesPercentage = (stats.caloriesConsumed / stats.caloriesGoal) * 100;
-  const fastingPercentage = (stats.fastingProgress / stats.fastingGoal) * 100;
-  const workoutsPercentage = (stats.workoutsThisWeek / stats.workoutGoal) * 100;
+  const caloriesPercentage = stats.caloriesGoal ? (stats.caloriesConsumed / stats.caloriesGoal) * 100 : 0;
+  const fastingPercentage = stats.fastingGoal ? (stats.fastingProgress / stats.fastingGoal) * 100 : 0;
+  const workoutsPercentage = stats.workoutGoal ? (stats.workoutsThisWeek / stats.workoutGoal) * 100 : 0;
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">

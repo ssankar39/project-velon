@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
 
 export async function POST(req: NextRequest) {
@@ -15,19 +15,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find user by email - using raw query to get password
-    const user = await (prisma.$queryRaw as (query: TemplateStringsArray, ...values: Array<string>) => Promise<Array<{ id: string; email: string; name: string | null; password: string }>>)`
-      SELECT id, email, name, password FROM [dbo].[User] WHERE email = ${email}
-    `;
+    const usersCollection = await getCollection('User');
 
-    if (!user || user.length === 0) {
+    // Find user by email
+    const userData = await usersCollection.findOne({ email });
+
+    if (!userData) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
       );
     }
-
-    const userData = user[0];
 
     // Compare password
     const passwordMatch = await bcrypt.compare(password, userData.password);
@@ -44,7 +42,7 @@ export async function POST(req: NextRequest) {
     const { password: _password, ...userWithoutPassword } = userData;
 
     return NextResponse.json(
-      { message: 'Login successful', user: userWithoutPassword },
+      { message: 'Login successful', user: { id: userData._id.toString(), ...userWithoutPassword } },
       { status: 200 }
     );
   } catch (error) {

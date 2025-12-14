@@ -8,6 +8,7 @@ import CalculatorModule from '@/app/components/Calculators/CalculatorModule';
 import { FastingTracker } from '@/app/components/Fasting/FastingTracker';
 import WorkoutsModule from '@/app/components/Workouts/WorkoutsModule';
 import MetricsModule from '@/app/components/Metrics/MetricsModule';
+import { ProfilePage } from '@/app/components/Profile/ProfilePage';
 import { UserStats, Meal, FastingState } from '@/app/types';
 
 interface AuthUser {
@@ -16,7 +17,7 @@ interface AuthUser {
   name?: string;
 }
 
-type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics';
+type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
@@ -90,6 +91,7 @@ export default function Home() {
         {activeModule === 'fasting' && <FastingTracker onFastingUpdate={handleFastingUpdate} />}
         {activeModule === 'workouts' && <WorkoutsModule />}
         {activeModule === 'metrics' && <MetricsModule />}
+        {activeModule === 'profile' && <ProfilePage onBack={() => setActiveModule('dashboard')} />}
       </main>
     </div>
   );

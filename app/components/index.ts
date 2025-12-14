@@ -5,4 +5,3 @@ export { ProgressGrid } from './Dashboard/ProgressGrid';
 export { CalorieTracker } from './Calories/CalorieTracker';
 export { FastingTracker } from './Fasting/FastingTracker';
 export { default as CalculatorModule } from './Calculators/CalculatorModule';
-export { WorkoutsModule, MetricsModule } from './ComingSoon/ComingSoonModule';

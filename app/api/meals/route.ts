@@ -1,10 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+﻿import { NextRequest, NextResponse } from 'next/server';
+import { getCollection } from '@/lib/mongodb';
 
-/**
- * POST /api/meals - Add a new meal
- * Body: { userId: string (email), name: string, calories: number, type: 'breakfast'|'lunch'|'dinner'|'snack' }
- */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -17,10 +13,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Find user by email
-    const user = await prisma.user.findUnique({
-      where: { email: userId },
-    });
+    const usersCollection = await getCollection('User');
+    const mealsCollection = await getCollection('Meal');
+
+    const user = await usersCollection.findOne({ email: userId });
 
     if (!user) {
       return NextResponse.json(
@@ -29,16 +25,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const meal = await prisma.meal.create({
-      data: {
-        userId: user.id,
-        name,
-        calories: parseInt(calories),
-        type,
-      },
+    const result = await mealsCollection.insertOne({
+      userId: user._id.toString(),
+      name,
+      calories: parseInt(calories),
+      type,
+      timestamp: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     });
 
-    return NextResponse.json(meal, { status: 201 });
+    return NextResponse.json({ id: result.insertedId.toString(), ...body }, { status: 201 });
   } catch (error) {
     console.error('Error creating meal:', error);
     return NextResponse.json(
@@ -48,10 +45,6 @@ export async function POST(req: NextRequest) {
   }
 }
 
-/**
- * GET /api/meals - Fetch meals for a user
- * Query params: userId (required - email), date (optional - ISO string)
- */
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -65,34 +58,27 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Get the database user ID from email
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
+    const usersCollection = await getCollection('User');
+    const mealsCollection = await getCollection('Meal');
+
+    const user = await usersCollection.findOne({ email });
 
     if (!user) {
       return NextResponse.json([], { status: 200 });
     }
 
-    const whereClause: Record<string, unknown> = { userId: user.id };
+    // eslint-disable-next-line prefer-const
+    const query: Record<string, unknown> = { userId: user._id.toString() };
 
-    // If date is provided, filter by that day
     if (date) {
       const startOfDay = new Date(date);
       startOfDay.setHours(0, 0, 0, 0);
       const endOfDay = new Date(date);
       endOfDay.setHours(23, 59, 59, 999);
-
-      whereClause.timestamp = {
-        gte: startOfDay,
-        lte: endOfDay,
-      };
+      query.timestamp = { $gte: startOfDay, $lte: endOfDay };
     }
 
-    const meals = await prisma.meal.findMany({
-      where: whereClause,
-      orderBy: { timestamp: 'desc' },
-    });
+    const meals = await mealsCollection.find(query).sort({ timestamp: -1 }).toArray();
 
     return NextResponse.json(meals, { status: 200 });
   } catch (error) {

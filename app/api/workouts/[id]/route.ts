@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { getCollection } from '@/lib/mongodb';
+import { ObjectId } from 'mongodb';
 
-/**
- * DELETE /api/workouts/[id] - Delete a workout
- */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -11,11 +9,19 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    const workout = await prisma.workout.delete({
-      where: { id },
+    const workoutsCollection = await getCollection('Workout');
+    const result = await workoutsCollection.deleteOne({
+      _id: new ObjectId(id),
     });
 
-    return NextResponse.json(workout, { status: 200 });
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
+        { error: 'Workout not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error('Error deleting workout:', error);
     return NextResponse.json(
