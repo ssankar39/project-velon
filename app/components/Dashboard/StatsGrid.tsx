@@ -24,7 +24,7 @@ const StatCard: React.FC<StatCardProps> = ({
   iconBg,
 }) => {
   return (
-    <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
+    <div className="glass rounded-2xl p-6 transition-transform duration-300 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div className="flex-1">
           <p className="text-gray-400 text-sm font-medium mb-2">{label}</p>

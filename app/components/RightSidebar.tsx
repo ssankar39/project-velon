@@ -1,149 +1,304 @@
 'use client';
 
-import React from 'react';
-import { Clock, Pause, Play, Coffee } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Clock, Dumbbell, Flame, TrendingUp } from 'lucide-react';
+import { LiveActivityCard } from './LiveActivityCard';
 
-interface Activity {
+interface Workout {
   id: string;
   name: string;
-  type: 'starting' | 'break';
-  reason?: string;
-  duration?: string;
-  image?: string;
+  duration: number;
+  intensity: 'low' | 'medium' | 'high';
+  caloriesBurned: number;
+  timestamp: string;
+}
+
+interface FastingSession {
+  id: string;
+  protocol: string;
+  startTime: string;
+  endTime: string;
+  isActive: boolean;
+  completedAt?: string;
+}
+
+interface Metric {
+  id: string;
+  weight?: number;
+  bodyFat?: number;
+  bmi?: number;
+  timestamp: string;
+}
+
+interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
 }
 
 interface RightSidebarProps {
-  startingActivities?: Activity[];
-  breakActivities?: Activity[];
+  userId?: string;
 }
 
-const defaultStarting: Activity[] = [
-  { id: '1', name: 'Morning Run', type: 'starting', image: undefined },
-  { id: '2', name: 'Meal Prep', type: 'starting', image: undefined },
-];
+export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
+  const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
+  const [activeFasting, setActiveFasting] = useState<FastingSession | null>(null);
+  const [latestMetric, setLatestMetric] = useState<Metric | null>(null);
 
-const defaultBreaks: Activity[] = [
-  { id: '3', name: 'Rest Day', type: 'break', reason: 'Recovery', duration: '12:30' },
-  { id: '4', name: 'Lunch Break', type: 'break', reason: 'Meal time', duration: '08:15' },
-];
+  useEffect(() => {
+    fetchRecentWorkouts();
+    fetchActiveData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
-export const RightSidebar: React.FC<RightSidebarProps> = ({
-  startingActivities = defaultStarting,
-  breakActivities = defaultBreaks,
-}) => {
+  const fetchActiveData = async () => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+
+      const user: AuthUser = JSON.parse(storedUser);
+      const userEmail = userId || user.email;
+      
+      // Fetch today's workouts (most recent one)
+      const today = new Date().toISOString().split('T')[0];
+      const workoutsRes = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}&date=${today}`);
+      const workouts: Workout[] = await workoutsRes.json();
+      if (workouts.length > 0) {
+        setActiveWorkout(workouts[0]);
+      }
+
+      // Fetch active fasting session
+      const fastingRes = await fetch(`/api/fasting?userId=${encodeURIComponent(userEmail)}`);
+      const fastingSessions: FastingSession[] = await fastingRes.json();
+      const active = fastingSessions.find(s => s.isActive);
+      if (active) {
+        setActiveFasting(active);
+      }
+
+      // Fetch latest metric
+      const metricsRes = await fetch(`/api/metrics?userId=${encodeURIComponent(userEmail)}`);
+      const metrics: Metric[] = await metricsRes.json();
+      if (metrics.length > 0) {
+        setLatestMetric(metrics[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching active data:', error);
+    }
+  };
+
+  const fetchRecentWorkouts = async () => {
+    try {
+      setLoading(true);
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) return;
+
+      const user: AuthUser = JSON.parse(storedUser);
+      const userEmail = userId || user.email;
+
+      // Fetch workouts from the last 7 days
+      const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
+      if (!response.ok) throw new Error('Failed to fetch workouts');
+
+      const allWorkouts: Workout[] = await response.json();
+      
+      // Get unique recent workouts (last 5)
+      const recent = allWorkouts.slice(0, 5);
+      setRecentWorkouts(recent);
+    } catch (error) {
+      console.error('Error fetching recent workouts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+  };
+
+  const getIntensityColor = (intensity: string) => {
+    switch (intensity) {
+      case 'low':
+        return 'from-blue-500 to-blue-600';
+      case 'medium':
+        return 'from-yellow-500 to-orange-500';
+      case 'high':
+        return 'from-red-500 to-red-600';
+      default:
+        return 'from-gray-500 to-gray-600';
+    }
+  };
+
+  const calculateFastingProgress = () => {
+    if (!activeFasting) return { duration: '0h 0m', totalTime: '0h 0m' };
+
+    const start = new Date(activeFasting.startTime).getTime();
+    const now = Date.now();
+    const elapsed = now - start;
+    const total = parseInt(activeFasting.protocol) * 60 * 60 * 1000;
+
+    const formatTime = (ms: number) => {
+      const hours = Math.floor(ms / (1000 * 60 * 60));
+      const minutes = Math.floor((ms % (1000 * 60 * 60)) / (1000 * 60));
+      return `${hours}h ${minutes}m`;
+    };
+
+    const cappedElapsed = Math.min(Math.max(0, elapsed), total);
+
+    return {
+      duration: formatTime(cappedElapsed),
+      totalTime: formatTime(total)
+    };
+  };
+
+  const formatMetricValue = () => {
+    if (!latestMetric) return 'No data';
+    if (latestMetric.weight) return `${latestMetric.weight} lbs`;
+    if (latestMetric.bodyFat) return `${latestMetric.bodyFat}% BF`;
+    if (latestMetric.bmi) return `BMI ${latestMetric.bmi}`;
+    return 'Recorded';
+  };
+
+  const getTimeSinceMetric = () => {
+    if (!latestMetric) return '';
+    const now = new Date();
+    const metricTime = new Date(latestMetric.timestamp);
+    const diffHours = Math.floor((now.getTime() - metricTime.getTime()) / 1000 / 60 / 60);
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
+  };
+
+  const totalCaloriesBurned = recentWorkouts.reduce((sum, w) => sum + (w.caloriesBurned || 0), 0);
+  const totalWorkouts = recentWorkouts.length;
+
   return (
     <aside className="fixed right-0 top-20 h-[calc(100vh-5rem)] w-80 glass p-6 overflow-y-auto animate-slideInRight">
-      {/* Starting Activities */}
+      {/* Active Sessions */}
+      <div className="mb-8">
+        <h3 className="text-lg font-bold text-white mb-4">Active Sessions</h3>
+        <div className="space-y-3">
+          {activeWorkout && (
+            <LiveActivityCard
+              type="workout"
+              name={activeWorkout.name}
+              duration={`${activeWorkout.duration} min`}
+              totalTime={`${activeWorkout.caloriesBurned || 0} kcal`}
+              status="completed"
+            />
+          )}
+          {activeFasting && (
+            <LiveActivityCard
+              type="fasting"
+              name={`${activeFasting.protocol}h Fast`}
+              duration={calculateFastingProgress().duration}
+              totalTime={calculateFastingProgress().totalTime}
+              status="active"
+            />
+          )}
+          {latestMetric && (
+            <LiveActivityCard
+              type="progress"
+              name="Latest Metric"
+              duration={formatMetricValue()}
+              totalTime={getTimeSinceMetric()}
+              status="completed"
+            />
+          )}
+          {!activeWorkout && !activeFasting && !latestMetric && (
+            <div className="text-center py-8 glass-light rounded-xl">
+              <p className="text-gray-400 text-sm">No active sessions</p>
+              <p className="text-xs text-gray-500 mt-1">Start tracking to see live data</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Workouts */}
       <div className="mb-8">
         <div className="flex items-center gap-2 mb-4">
-          <Play size={20} className="text-green-400" />
-          <h3 className="text-lg font-bold text-white">Starting Activities</h3>
+          <TrendingUp size={20} className="text-purple-400" />
+          <h3 className="text-lg font-bold text-white">Recent Workouts</h3>
         </div>
 
         <div className="space-y-3">
-          {startingActivities.map((activity) => (
-            <div
-              key={activity.id}
-              className="glass-light rounded-xl p-4 hover:bg-purple-600/20 transition-all cursor-pointer animate-fadeIn"
-            >
-              <div className="flex items-center gap-3">
-                {activity.image ? (
-                  <img
-                    src={activity.image}
-                    alt={activity.name}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                    <Play size={16} className="text-white" />
+          {loading ? (
+            <div className="text-center py-8 text-gray-400 text-sm">
+              Loading workouts...
+            </div>
+          ) : recentWorkouts.length > 0 ? (
+            recentWorkouts.map((workout) => (
+              <div
+                key={workout.id}
+                className="glass-light rounded-xl p-4 border-l-4 border-purple-500 animate-fadeIn"
+              >
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getIntensityColor(workout.intensity)} flex items-center justify-center`}>
+                    <Dumbbell size={16} className="text-white" />
                   </div>
-                )}
-                <div className="flex-1">
-                  <p className="text-white font-semibold text-sm">{activity.name}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse-slow" />
-                    <span className="text-xs text-gray-400">Initiating...</span>
+                  <div className="flex-1">
+                    <p className="text-white font-semibold text-sm">{workout.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-xs text-gray-400">{formatDate(workout.timestamp)}</span>
+                      <span className="text-xs text-purple-400 capitalize">{workout.intensity}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          ))}
 
-          {startingActivities.length === 0 && (
+                <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-1">
+                    <Clock size={14} className="text-yellow-400" />
+                    <span className="text-xs text-gray-300 font-semibold">{workout.duration} min</span>
+                  </div>
+                  {workout.caloriesBurned > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Flame size={14} className="text-orange-400" />
+                      <span className="text-xs text-gray-300 font-semibold">{workout.caloriesBurned} kcal</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          ) : (
             <div className="text-center py-8 text-gray-400 text-sm">
-              No activities starting
+              No recent workouts
             </div>
           )}
         </div>
       </div>
 
-      {/* Break Section */}
-      <div>
-        <div className="flex items-center gap-2 mb-4">
-          <Pause size={20} className="text-yellow-400" />
-          <h3 className="text-lg font-bold text-white">On Break</h3>
-        </div>
-
-        <div className="space-y-3">
-          {breakActivities.map((activity) => (
-            <div
-              key={activity.id}
-              className="glass-light rounded-xl p-4 border-l-4 border-yellow-500 animate-fadeIn"
-            >
-              <div className="flex items-center gap-3 mb-2">
-                {activity.image ? (
-                  <img
-                    src={activity.image}
-                    alt={activity.name}
-                    className="w-10 h-10 rounded-full object-cover grayscale"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
-                    <Coffee size={16} className="text-white" />
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="text-white font-semibold text-sm">{activity.name}</p>
-                  <div className="flex items-center gap-1 mt-1">
-                    <Pause size={12} className="text-yellow-400" />
-                    <span className="text-xs text-gray-400">{activity.reason || 'Break'}</span>
-                  </div>
-                </div>
-              </div>
-
-              {activity.duration && (
-                <div className="flex items-center gap-2 mt-3 pt-3 border-t border-white/10">
-                  <Clock size={14} className="text-yellow-400" />
-                  <span className="text-xs text-yellow-400 font-semibold">{activity.duration}</span>
-                  <span className="text-xs text-gray-400">elapsed</span>
-                </div>
-              )}
-            </div>
-          ))}
-
-          {breakActivities.length === 0 && (
-            <div className="text-center py-8 text-gray-400 text-sm">
-              No one on break
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="mt-8 glass-light rounded-xl p-4">
-        <h4 className="text-white font-semibold mb-3 text-sm">Today&apos;s Summary</h4>
+      {/* Workout Summary */}
+      <div className="glass-light rounded-xl p-4">
+        <h4 className="text-white font-semibold mb-3 text-sm">Workout Summary</h4>
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-400">Active Goals</span>
-            <span className="text-sm font-bold text-green-400">3</span>
+            <span className="text-xs text-gray-400">Total Workouts</span>
+            <span className="text-sm font-bold text-purple-400">{totalWorkouts}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-400">Completed</span>
-            <span className="text-sm font-bold text-blue-400">7</span>
+            <span className="text-xs text-gray-400">Calories Burned</span>
+            <span className="text-sm font-bold text-orange-400">{totalCaloriesBurned} kcal</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-400">On Break</span>
-            <span className="text-sm font-bold text-yellow-400">{breakActivities.length}</span>
+            <span className="text-xs text-gray-400">Avg Duration</span>
+            <span className="text-sm font-bold text-yellow-400">
+              {totalWorkouts > 0 
+                ? Math.round(recentWorkouts.reduce((sum, w) => sum + w.duration, 0) / totalWorkouts)
+                : 0} min
+            </span>
           </div>
         </div>
       </div>

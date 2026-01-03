@@ -51,7 +51,7 @@ export const GlassSidebar: React.FC<GlassSidebarProps> = ({
               onClick={() => onModuleChange(item.id)}
               className={`group relative w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 ${
                 isActive
-                  ? 'bg-purple-600 shadow-lg animate-glow'
+                  ? 'bg-purple-600 shadow-lg'
                   : 'glass-light hover:bg-purple-600/30'
               }`}
               title={item.label}

@@ -3,10 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { UserStats } from '@/app/types';
 import { StatsGrid } from './StatsGrid';
-import { ProgressGrid } from './ProgressGrid';
 import { Loader2 } from 'lucide-react';
 import { ActivityGraph } from '../ActivityGraph';
-import { LiveActivityCard } from '../LiveActivityCard';
 import { DatePicker } from '../DatePicker';
 
 interface DashboardModuleProps {
@@ -75,47 +73,17 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
 
       {/* Main Analytics Graph */}
       <div className="mb-6">
-        <ActivityGraph title="Daily Calorie Progress" />
+        <ActivityGraph 
+          title="Weekly Calorie Burn Progress" 
+          metricType="calories"
+          userId={currentUser?.email}
+        />
       </div>
 
       {/* Stats Overview */}
       <div className="mb-6">
         <h3 className="text-2xl font-bold text-white mb-4">Quick Stats</h3>
         <StatsGrid stats={stats} />
-      </div>
-
-      {/* Progress Grid */}
-      <div className="mb-6">
-        <h3 className="text-2xl font-bold text-white mb-4">Goals Progress</h3>
-        <ProgressGrid stats={stats} />
-      </div>
-
-      {/* Ongoing Activities */}
-      <div className="mb-6">
-        <h3 className="text-2xl font-bold text-white mb-4">Active Sessions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <LiveActivityCard
-            type="workout"
-            name="Morning Cardio"
-            duration="25:30"
-            totalTime="45:00"
-            status="active"
-          />
-          <LiveActivityCard
-            type="meal"
-            name="Breakfast Logged"
-            duration="08:15"
-            totalTime="24:00"
-            status="completed"
-          />
-          <LiveActivityCard
-            type="fasting"
-            name="Intermittent Fast"
-            duration="14:30"
-            totalTime="16:00"
-            status="active"
-          />
-        </div>
       </div>
     </div>
   );

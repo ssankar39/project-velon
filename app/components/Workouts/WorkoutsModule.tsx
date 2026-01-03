@@ -265,8 +265,8 @@ export const WorkoutsModule: React.FC = () => {
         )}
 
         <div className="flex items-center justify-between p-4 glass-light rounded-lg border-t-2 border-purple-500/30">
-          <p className="font-semibold text-gray-900">Total Burned:</p>
-          <p className="text-2xl font-bold text-green-600">{totalCaloriesBurned.toLocaleString()} kcal</p>
+          <p className="font-semibold text-white">Total Burned:</p>
+          <p className="text-2xl font-bold text-yellow-400">{totalCaloriesBurned.toLocaleString()} kcal</p>
         </div>
       </div>
     </div>

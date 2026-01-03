@@ -53,17 +53,6 @@ body {
   }
 }
 
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-}
-
 @keyframes shimmer {
   0% {
     background-position: -1000px 0;
@@ -117,9 +106,6 @@ body {
   .animate-fadeIn {
     animation: fadeIn 0.3s ease-in-out;
   }
-  .animate-pulse-slow {
-    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
   .animate-shimmer {
     animation: shimmer 2s infinite linear;
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
@@ -142,6 +128,19 @@ select,
 textarea {
   color: #f3f4f6 !important;
   background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Select dropdown options styling */
+select option {
+  background-color: #1a1a2e !important;
+  color: #f3f4f6 !important;
+  padding: 8px !important;
+}
+
+select option:checked,
+select option:hover {
+  background-color: #8b5cf6 !important;
+  color: #ffffff !important;
 }
 
 input::placeholder,

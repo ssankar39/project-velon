@@ -17,11 +17,7 @@ interface ProfileFormData {
   confirmPassword: string;
 }
 
-interface ProfilePageProps {
-  onBack: () => void;
-}
-
-export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
+export const ProfilePage: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' }>({ text: '', type: 'success' });

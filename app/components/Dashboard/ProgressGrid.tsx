@@ -24,7 +24,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
   const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
 
   return (
-    <div className="glass rounded-2xl p-6 flex flex-col items-center text-center hover:scale-105 transition-transform duration-300 animate-fadeIn">
+    <div className="glass rounded-2xl p-6 flex flex-col items-center text-center transition-transform duration-300 animate-fadeIn">
       <h3 className="text-lg font-semibold text-white mb-4">{label}</h3>
       <div className="relative w-32 h-32 mb-2">
         <svg className="w-32 h-32" style={{ transform: 'rotate(-90deg)' }}>

@@ -1,4 +1,3 @@
-export { Header } from './Header';
 export { DashboardModule } from './Dashboard/DashboardModule';
 export { StatsGrid } from './Dashboard/StatsGrid';
 export { ProgressGrid } from './Dashboard/ProgressGrid';

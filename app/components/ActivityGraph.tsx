@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface DataPoint {
-  time: string;
+  day: string;
   actual: number;
   target: number;
 }
@@ -11,34 +11,184 @@ interface DataPoint {
 interface ActivityGraphProps {
   data?: DataPoint[];
   title?: string;
+  metricType?: 'calories' | 'workouts' | 'weight' | 'fasting';
+  userId?: string;
 }
 
-const defaultData: DataPoint[] = [
-  { time: '7 AM', actual: 200, target: 180 },
-  { time: '8 AM', actual: 450, target: 400 },
-  { time: '9 AM', actual: 780, target: 650 },
-  { time: '10 AM', actual: 1100, target: 900 },
-  { time: '11 AM', actual: 1350, target: 1200 },
-  { time: '12 PM', actual: 1580, target: 1450 },
-  { time: '1 PM', actual: 1720, target: 1600 },
-  { time: '2 PM', actual: 1850, target: 1750 },
-  { time: '3 PM', actual: 1900, target: 1850 },
-  { time: '4 PM', actual: 1920, target: 1900 },
-  { time: '5 PM', actual: 1950, target: 1950 },
-  { time: '6 PM', actual: 1980, target: 2000 },
-  { time: '7 PM', actual: 1990, target: 2000 },
-  { time: '8 PM', actual: 1995, target: 2000 },
-  { time: '9 PM', actual: 2000, target: 2000 },
-  { time: '10 PM', actual: 2000, target: 2000 },
-];
+interface AuthUser {
+  id: string;
+  email: string;
+  name?: string;
+}
+
+interface Workout {
+  caloriesBurned: number;
+  timestamp: string;
+}
+
+interface FastingSession {
+  protocol: string;
+  completedAt?: string;
+  timestamp: string;
+}
+
+interface Metric {
+  weight?: number;
+  timestamp: string;
+}
 
 export const ActivityGraph: React.FC<ActivityGraphProps> = ({
-  data = defaultData,
-  title = 'Activity Statistics',
+  data: externalData,
+  title = 'Weekly Progress',
+  metricType = 'calories',
+  userId,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [data, setData] = useState<DataPoint[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const maxValue = Math.max(...data.map((d) => Math.max(d.actual, d.target)));
+  useEffect(() => {
+    if (externalData) {
+      setData(externalData);
+      setLoading(false);
+    } else {
+      fetchWeeklyData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metricType, userId]);
+
+  const fetchWeeklyData = async () => {
+    try {
+      setLoading(true);
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        setDefaultData();
+        return;
+      }
+
+      const user: AuthUser = JSON.parse(storedUser);
+      const userEmail = userId || user.email;
+
+      // Get last 7 days
+      const weekData: DataPoint[] = [];
+      const today = new Date();
+      
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+        weekData.push({
+          day: dayName,
+          actual: 0,
+          target: 0,
+        });
+      }
+
+      // Fetch data based on metric type
+      if (metricType === 'calories') {
+        // Fetch workouts for the week
+        const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
+        const workouts: Workout[] = await response.json();
+        
+        const caloriesGoal = 2000; // Daily calorie burn goal
+        workouts.forEach((workout) => {
+          const workoutDate = new Date(workout.timestamp);
+          const dayIndex = Math.floor((today.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
+          if (dayIndex >= 0 && dayIndex < 7) {
+            weekData[6 - dayIndex].actual += workout.caloriesBurned;
+            weekData[6 - dayIndex].target = caloriesGoal;
+          }
+        });
+      } else if (metricType === 'workouts') {
+        // Fetch workout count for the week
+        const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
+        const workouts: Workout[] = await response.json();
+        
+        const workoutGoal = 1; // Daily workout goal
+        const workoutCounts: Record<string, number> = {};
+        
+        workouts.forEach((workout) => {
+          const workoutDate = new Date(workout.timestamp).toISOString().split('T')[0];
+          workoutCounts[workoutDate] = (workoutCounts[workoutDate] || 0) + 1;
+        });
+
+        weekData.forEach((day, index) => {
+          const date = new Date(today);
+          date.setDate(date.getDate() - (6 - index));
+          const dateStr = date.toISOString().split('T')[0];
+          day.actual = workoutCounts[dateStr] || 0;
+          day.target = workoutGoal;
+        });
+      } else if (metricType === 'fasting') {
+        // Fetch fasting sessions for the week
+        const response = await fetch(`/api/fasting?userId=${encodeURIComponent(userEmail)}`);
+        const sessions: FastingSession[] = await response.json();
+        
+        const fastingGoal = 16; // Hours
+        sessions.forEach((session) => {
+          if (session.completedAt) {
+            const sessionDate = new Date(session.completedAt);
+            const dayIndex = Math.floor((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (dayIndex >= 0 && dayIndex < 7) {
+              weekData[6 - dayIndex].actual = parseInt(session.protocol);
+              weekData[6 - dayIndex].target = fastingGoal;
+            }
+          }
+        });
+      } else if (metricType === 'weight') {
+        // Fetch metrics for the week
+        const response = await fetch(`/api/metrics?userId=${encodeURIComponent(userEmail)}`);
+        const metrics: Metric[] = await response.json();
+        
+        const weightGoal = metrics.length > 0 && metrics[0].weight ? metrics[0].weight * 0.99 : 180; // 1% reduction goal
+        
+        metrics.forEach((metric) => {
+          if (metric.weight) {
+            const metricDate = new Date(metric.timestamp);
+            const dayIndex = Math.floor((today.getTime() - metricDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (dayIndex >= 0 && dayIndex < 7) {
+              weekData[6 - dayIndex].actual = metric.weight;
+              weekData[6 - dayIndex].target = weightGoal;
+            }
+          }
+        });
+      }
+
+      setData(weekData);
+    } catch (error) {
+      console.error('Error fetching weekly data:', error);
+      setDefaultData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setDefaultData = () => {
+    const defaultWeekData: DataPoint[] = [
+      { day: 'Mon', actual: 0, target: 2000 },
+      { day: 'Tue', actual: 0, target: 2000 },
+      { day: 'Wed', actual: 0, target: 2000 },
+      { day: 'Thu', actual: 0, target: 2000 },
+      { day: 'Fri', actual: 0, target: 2000 },
+      { day: 'Sat', actual: 0, target: 2000 },
+      { day: 'Sun', actual: 0, target: 2000 },
+    ];
+    setData(defaultWeekData);
+    setLoading(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="glass rounded-2xl p-6 animate-fadeIn">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-400">Loading weekly data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const maxValue = Math.max(...data.map((d) => Math.max(d.actual, d.target)), 1);
   const padding = 60;
   const graphHeight = 300;
   const graphWidth = 800;
@@ -187,7 +337,7 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
                 height="60"
               >
                 <div className="glass-light rounded-lg p-3 text-center shadow-xl">
-                  <p className="text-xs text-gray-400 mb-1">{data[hoveredIndex].time}</p>
+                  <p className="text-xs text-gray-400 mb-1">{data[hoveredIndex].day}</p>
                   <p className="text-sm text-purple-400 font-semibold">
                     Actual: {data[hoveredIndex].actual}
                   </p>
@@ -201,22 +351,19 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
 
           {/* X-axis labels */}
           {data.map((point, i) => {
-            if (i % 2 === 0) {
-              const x = getX(i);
-              return (
-                <text
-                  key={i}
-                  x={x}
-                  y={graphHeight - 10}
-                  textAnchor="middle"
-                  fontSize="12"
-                  fill="#9ca3af"
-                >
-                  {point.time}
-                </text>
-              );
-            }
-            return null;
+            const x = getX(i);
+            return (
+              <text
+                key={i}
+                x={x}
+                y={graphHeight - 10}
+                textAnchor="middle"
+                fontSize="12"
+                fill="#9ca3af"
+              >
+                {point.day}
+              </text>
+            );
           })}
 
           {/* Y-axis labels */}

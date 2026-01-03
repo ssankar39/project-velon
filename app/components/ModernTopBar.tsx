@@ -47,7 +47,7 @@ export const ModernTopBar: React.FC<ModernTopBarProps> = ({
       {/* Center: Active Status Pill */}
       <div className="glass-light px-6 py-3 rounded-full flex items-center gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse-slow" />
+          <div className="w-2 h-2 rounded-full bg-green-500" />
           <span className="text-sm text-gray-300">
             <span className="text-white font-semibold">{activeUsers}</span> of{' '}
             <span className="text-white font-semibold">{totalUsers}</span> goals active

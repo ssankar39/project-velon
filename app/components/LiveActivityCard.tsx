@@ -55,7 +55,7 @@ export const LiveActivityCard: React.FC<LiveActivityCardProps> = ({
   const dots = generateDots();
 
   return (
-    <div className="glass rounded-2xl p-5 animate-fadeIn hover:scale-105 transition-transform duration-300">
+    <div className="glass rounded-2xl p-5 animate-fadeIn transition-transform duration-300">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -103,7 +103,7 @@ export const LiveActivityCard: React.FC<LiveActivityCardProps> = ({
           return (
             <div
               key={index}
-              className={`w-2 h-2 rounded-full ${color} ${opacity} transition-all hover:scale-150`}
+              className={`w-2 h-2 rounded-full ${color} ${opacity} transition-all`}
               title={`Activity: ${Math.round(value * 100)}%`}
             />
           );

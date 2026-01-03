@@ -84,7 +84,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ onDateSelect }) => {
               onClick={() => handleDateSelect(date)}
               className={`min-w-[80px] px-4 py-3 rounded-xl transition-all duration-300 ${
                 selected
-                  ? 'bg-purple-600 animate-glow shadow-lg scale-105'
+                  ? 'bg-purple-600 shadow-lg'
                   : 'glass-light hover:bg-purple-600/30'
               }`}
             >

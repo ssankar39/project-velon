@@ -117,7 +117,7 @@ export default function Home() {
         {activeModule === 'fasting' && <FastingTracker onFastingUpdate={handleFastingUpdate} />}
         {activeModule === 'workouts' && <WorkoutsModule />}
         {activeModule === 'metrics' && <MetricsModule />}
-        {activeModule === 'profile' && <ProfilePage onBack={() => setActiveModule('dashboard')} />}
+        {activeModule === 'profile' && <ProfilePage />}
       </main>
 
       {/* Right Sidebar */}
