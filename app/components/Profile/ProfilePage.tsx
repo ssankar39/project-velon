@@ -151,27 +151,27 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
     <div className="max-w-2xl mx-auto p-6 animate-fadeIn">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center justify-center gap-3">
-          <User className="w-8 h-8 text-purple-600" />
+        <h1 className="text-3xl font-bold text-white flex items-center justify-center gap-3">
+          <User className="w-8 h-8 text-purple-400" />
           Personal Information
         </h1>
-        <p className="text-gray-600 mt-2 text-center">Manage your account details and preferences</p>
+        <p className="text-gray-300 mt-2 text-center">Manage your account details and preferences</p>
       </div>
 
       {/* Profile Card */}
-      <div className="bg-white rounded-lg shadow-sm p-8">
+      <div className="glass rounded-2xl p-8 hover:scale-[1.01] transition-transform duration-300 animate-fadeIn">
         <form onSubmit={handleUpdateProfile} className="space-y-6">
           {/* Account Information Section */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <User className="w-5 h-5 text-purple-600" />
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <User className="w-5 h-5 text-purple-400" />
               Account Information
             </h2>
             
             <div className="space-y-4">
               {/* Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Full Name
                 </label>
                 <input
@@ -180,48 +180,48 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="Enter your name"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-gray-900"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                   required
                 />
               </div>
 
               {/* Email (Read-only) */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Email Address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-3.5 w-5 h-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-3.5 w-5 h-5 text-gray-500" />
                   <input
                     type="email"
                     value={formData.email}
                     disabled
-                    className="w-full pl-11 pr-4 py-3 border-2 border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                    className="w-full pl-11 pr-4 py-3 glass-light rounded-lg text-gray-400 cursor-not-allowed border border-white/5"
                   />
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
               </div>
             </div>
           </div>
 
           {/* Divider */}
-          <div className="border-t border-gray-200"></div>
+          <div className="border-t border-white/10"></div>
 
           {/* Password Section */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
-              <Lock className="w-5 h-5 text-purple-600" />
+            <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+              <Lock className="w-5 h-5 text-purple-400" />
               Change Password
             </h2>
             
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-sm text-gray-300 mb-4">
                 Leave these fields empty if you don&apos;t want to change your password
               </p>
 
               {/* Current Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Current Password
                 </label>
                 <input
@@ -230,13 +230,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
                   value={formData.currentPassword}
                   onChange={handleChange}
                   placeholder="Enter current password"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-gray-900"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
               </div>
 
               {/* New Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   New Password
                 </label>
                 <input
@@ -245,13 +245,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
                   value={formData.newPassword}
                   onChange={handleChange}
                   placeholder="Enter new password (min 6 characters)"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-gray-900"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
               </div>
 
               {/* Confirm Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-300 mb-2">
                   Confirm New Password
                 </label>
                 <input
@@ -260,7 +260,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm new password"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-purple-500 text-gray-900"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
               </div>
             </div>
@@ -283,7 +283,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onBack }) => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>

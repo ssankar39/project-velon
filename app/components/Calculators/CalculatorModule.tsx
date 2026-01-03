@@ -110,13 +110,13 @@ const CalculatorModule: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
         {/* BMR/TDEE Calculator */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
+        <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
           <div className="flex items-center gap-3 mb-6">
-            <Calculator className="w-6 h-6 text-gray-700" />
-            <h3 className="text-2xl font-semibold text-gray-900">BMR & TDEE Calculator</h3>
+            <Calculator className="w-6 h-6 text-purple-400" />
+            <h3 className="text-2xl font-semibold text-white">BMR & TDEE Calculator</h3>
           </div>
 
-          <p className="text-gray-600 mb-6 text-sm">
+          <p className="text-gray-300 mb-6 text-sm">
             Calculate your Basal Metabolic Rate (BMR) and Total Daily Energy Expenditure (TDEE)
             to understand your daily calorie needs.
           </p>
@@ -124,21 +124,21 @@ const CalculatorModule: React.FC = () => {
           <form onSubmit={handleBMRSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Age</label>
                 <input
                   type="number"
                   name="age"
                   placeholder="Enter your age"
                   required
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="w-full px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                <label className="block text-sm font-medium text-gray-300 mb-1">Gender</label>
                 <select
                   name="gender"
-                  className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="w-full px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="male">Male</option>
                   <option value="female">Female</option>
@@ -147,18 +147,18 @@ const CalculatorModule: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Weight</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   name="weight"
                   placeholder="Enter weight"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
                 <select
                   name="weight-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="lbs">lbs</option>
                   <option value="kg">kg</option>
@@ -167,18 +167,18 @@ const CalculatorModule: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Height</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   name="height"
                   placeholder="Enter height"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
                 <select
                   name="height-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -187,12 +187,12 @@ const CalculatorModule: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-300 mb-1">
                 Activity Level
               </label>
               <select
                 name="activity-level"
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                className="w-full px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
               >
                 <option value="1.2">Sedentary (little or no exercise)</option>
                 <option value="1.375">Lightly active (light exercise 1-3 days/week)</option>
@@ -204,7 +204,7 @@ const CalculatorModule: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all"
+              className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 transition-all"
             >
               Calculate BMR & TDEE
             </button>
@@ -221,20 +221,20 @@ const CalculatorModule: React.FC = () => {
           )}
 
           {bmrResult && (
-            <div className="mt-4 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded space-y-2">
+            <div className="mt-4 p-4 glass-light border-l-4 border-purple-500 rounded space-y-2">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">BMR</p>
-                  <p className="text-2xl font-bold text-blue-500">{bmrResult.bmr} cal/day</p>
-                  <p className="text-xs text-gray-600">Calories burned at rest</p>
+                  <p className="text-sm font-medium text-gray-300">BMR</p>
+                  <p className="text-2xl font-bold text-purple-400">{bmrResult.bmr} cal/day</p>
+                  <p className="text-xs text-gray-400">Calories burned at rest</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-700">TDEE</p>
-                  <p className="text-2xl font-bold text-blue-500">{bmrResult.tdee} cal/day</p>
-                  <p className="text-xs text-gray-600">Total daily needs</p>
+                  <p className="text-sm font-medium text-gray-300">TDEE</p>
+                  <p className="text-2xl font-bold text-purple-400">{bmrResult.tdee} cal/day</p>
+                  <p className="text-xs text-gray-400">Total daily needs</p>
                 </div>
               </div>
-              <div className="text-xs text-gray-700 mt-3 pt-3 border-t border-emerald-200">
+              <div className="text-xs text-gray-300 mt-3 pt-3 border-t border-white/10">
                 <strong>Weight Goals:</strong><br/>
                 • Weight loss: {bmrResult.tdee - 500} cal/day (-1 lb/week)<br/>
                 • Maintain: {bmrResult.tdee} cal/day<br/>
@@ -245,30 +245,30 @@ const CalculatorModule: React.FC = () => {
         </div>
 
         {/* BMI Calculator */}
-        <div className="bg-white rounded-lg p-6 shadow-sm">
+        <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
           <div className="flex items-center gap-3 mb-6">
-            <Activity className="w-6 h-6 text-gray-700" />
-            <h3 className="text-2xl font-semibold text-gray-900">BMI Calculator</h3>
+            <Activity className="w-6 h-6 text-yellow-400" />
+            <h3 className="text-2xl font-semibold text-white">BMI Calculator</h3>
           </div>
 
-          <p className="text-gray-600 mb-6 text-sm">
+          <p className="text-gray-300 mb-6 text-sm">
             Calculate your Body Mass Index (BMI) to assess if your weight is in a healthy range.
           </p>
 
           <form onSubmit={handleBMISubmit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Weight</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Weight</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   name="bmi-weight"
                   placeholder="Enter weight"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
                 <select
                   name="bmi-weight-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="lbs">lbs</option>
                   <option value="kg">kg</option>
@@ -277,18 +277,18 @@ const CalculatorModule: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Height</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   name="bmi-height"
                   placeholder="Enter height"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
                 <select
                   name="bmi-height-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -298,7 +298,7 @@ const CalculatorModule: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all"
+              className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 transition-all"
             >
               Calculate BMI
             </button>
@@ -315,34 +315,34 @@ const CalculatorModule: React.FC = () => {
           )}
 
           {bmiResult && (
-            <div className="mt-4 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded">
-              <p className="text-sm font-medium text-gray-700 mb-1">Your BMI</p>
-              <p className="text-3xl font-bold text-blue-500 mb-2">{bmiResult.bmi}</p>
-              <p className="text-lg font-semibold text-gray-900">{bmiResult.category}</p>
+            <div className="mt-4 p-4 glass-light border-l-4 border-yellow-500 rounded">
+              <p className="text-sm font-medium text-gray-300 mb-1">Your BMI</p>
+              <p className="text-3xl font-bold text-yellow-400 mb-2">{bmiResult.bmi}</p>
+              <p className="text-lg font-semibold text-white">{bmiResult.category}</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Body Fat Calculator */}
-      <div className="bg-white rounded-lg p-6 shadow-sm max-w-2xl">
+      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn max-w-2xl">
         <div className="flex items-center gap-3 mb-6">
-          <Target className="w-6 h-6 text-gray-700" />
-          <h3 className="text-2xl font-semibold text-gray-900">Body Fat Percentage Calculator</h3>
+          <Target className="w-6 h-6 text-purple-400" />
+          <h3 className="text-2xl font-semibold text-white">Body Fat Percentage Calculator</h3>
         </div>
 
-        <p className="text-gray-600 mb-6 text-sm">
+        <p className="text-gray-300 mb-6 text-sm">
           Estimate your body fat percentage using the U.S. Navy method.
         </p>
 
         <form onSubmit={handleBodyFatSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Gender</label>
               <select
                 name="bf-gender"
                 required
-                className="w-full px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                className="w-full px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
               >
                 <option value="">Select Gender</option>
                 <option value="male">Male</option>
@@ -351,18 +351,18 @@ const CalculatorModule: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Height</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Height</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   name="bf-height"
                   placeholder="Height"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
                 <select
                   name="bf-height-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -373,18 +373,18 @@ const CalculatorModule: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Waist</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Waist</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   name="bf-waist"
                   placeholder="Waist"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
                 <select
                   name="bf-waist-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -393,18 +393,18 @@ const CalculatorModule: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Neck</label>
+              <label className="block text-sm font-medium text-gray-300 mb-1">Neck</label>
               <div className="flex gap-2">
                 <input
                   type="number"
                   name="bf-neck"
                   placeholder="Neck"
                   required
-                  className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                  className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
                 />
                 <select
                   name="bf-neck-unit"
-                  className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                  className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="in">in</option>
                   <option value="cm">cm</option>
@@ -414,17 +414,17 @@ const CalculatorModule: React.FC = () => {
           </div>
 
           <div id="hip-group">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Hip (For Women)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Hip (For Women)</label>
             <div className="flex gap-2">
               <input
                 type="number"
                 name="bf-hip"
                 placeholder="Hip"
-                className="flex-1 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+                className="flex-1 px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
               />
               <select
                 name="bf-hip-unit"
-                className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+                className="px-3 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
               >
                 <option value="in">in</option>
                 <option value="cm">cm</option>
@@ -434,7 +434,7 @@ const CalculatorModule: React.FC = () => {
 
           <button
             type="submit"
-            className="w-full px-4 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all"
+            className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 transition-all"
           >
             Calculate Body Fat %
           </button>
@@ -451,9 +451,9 @@ const CalculatorModule: React.FC = () => {
         )}
 
         {bodyFatResult && (
-          <div className="mt-4 p-4 bg-emerald-50 border-l-4 border-emerald-500 rounded">
-            <p className="text-sm font-medium text-gray-700 mb-1">Body Fat Percentage</p>
-            <p className="text-3xl font-bold text-blue-500">{bodyFatResult.bodyFat}%</p>
+          <div className="mt-4 p-4 glass-light border-l-4 border-purple-500 rounded">
+            <p className="text-sm font-medium text-gray-300 mb-1">Body Fat Percentage</p>
+            <p className="text-3xl font-bold text-purple-400">{bodyFatResult.bodyFat}%</p>
           </div>
         )}
       </div>

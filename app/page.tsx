@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Header } from '@/app/components/Header';
+import { GlassSidebar } from '@/app/components/GlassSidebar';
+import { ModernTopBar } from '@/app/components/ModernTopBar';
+import { RightSidebar } from '@/app/components/RightSidebar';
 import { DashboardModule } from '@/app/components/Dashboard/DashboardModule';
 import { CalorieTracker } from '@/app/components/Calories/CalorieTracker';
 import CalculatorModule from '@/app/components/Calculators/CalculatorModule';
@@ -22,6 +24,7 @@ type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workout
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userStats, setUserStats] = useState<UserStats>({
     caloriesConsumed: 1847,
     caloriesGoal: 2000,
@@ -40,7 +43,8 @@ export default function Home() {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        JSON.parse(storedUser) as AuthUser;
+        const user = JSON.parse(storedUser) as AuthUser;
+        setCurrentUser(user);
         setLoading(false);
       } catch (e) {
         console.error('Failed to parse stored user:', e);
@@ -75,16 +79,38 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl font-semibold text-gray-600">Loading...</div>
+        <div className="text-xl font-semibold text-gray-300">Loading...</div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <Header onModuleChange={setActiveModule} activeModule={activeModule} onLogout={handleLogout} />
+  // Calculate active goals vs total
+  const activeGoals = [
+    userStats.caloriesConsumed < userStats.caloriesGoal,
+    userStats.fastingProgress < userStats.fastingGoal,
+    userStats.workoutsThisWeek < userStats.workoutGoal,
+  ].filter(Boolean).length;
 
-      <main className="max-w-7xl mx-auto py-8 animate-fadeIn">
+  return (
+    <div className="min-h-screen relative">
+      {/* Glassmorphic Sidebar */}
+      <GlassSidebar
+        activeModule={activeModule}
+        onModuleChange={setActiveModule}
+        onLogout={handleLogout}
+      />
+
+      {/* Modern Top Bar */}
+      <ModernTopBar
+        userName={currentUser?.name}
+        userEmail={currentUser?.email}
+        activeUsers={activeGoals}
+        totalUsers={3}
+        onBreak={3 - activeGoals}
+      />
+
+      {/* Main Content Area */}
+      <main className="ml-20 mr-80 mt-20 min-h-screen p-8">
         {activeModule === 'dashboard' && <DashboardModule stats={userStats} />}
         {activeModule === 'calories' && <CalorieTracker onMealsUpdate={handleMealsUpdate} />}
         {activeModule === 'calculator' && <CalculatorModule />}
@@ -93,6 +119,9 @@ export default function Home() {
         {activeModule === 'metrics' && <MetricsModule />}
         {activeModule === 'profile' && <ProfilePage onBack={() => setActiveModule('dashboard')} />}
       </main>
+
+      {/* Right Sidebar */}
+      <RightSidebar />
     </div>
   );
 }

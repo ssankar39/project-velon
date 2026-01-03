@@ -32,7 +32,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="text-xl font-semibold text-gray-600">Loading...</div>
+        <div className="text-xl font-semibold text-gray-300">Loading...</div>
       </div>
     );
   }

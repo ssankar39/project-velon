@@ -24,18 +24,18 @@ const StatCard: React.FC<StatCardProps> = ({
   iconBg,
 }) => {
   return (
-    <div className="bg-white rounded-lg p-6 shadow-sm">
+    <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-gray-500 text-sm font-medium mb-1">{label}</p>
-          <p className="text-2xl font-bold text-gray-900">
+          <p className="text-gray-400 text-sm font-medium mb-2">{label}</p>
+          <p className="text-3xl font-bold text-white">
             {value}
-            {unit && <span className="text-base font-normal text-gray-500 ml-1">{unit}</span>}
+            {unit && <span className="text-lg font-normal text-gray-400 ml-1">{unit}</span>}
           </p>
-          {goal && <p className="text-sm text-gray-600">Goal: {goal}</p>}
-          {change && <p className="text-sm font-medium text-amber-500">{change}</p>}
+          {goal && <p className="text-sm text-gray-300 mt-2">Goal: <span className="text-purple-400 font-semibold">{goal}</span></p>}
+          {change && <p className="text-sm font-medium text-yellow-400 mt-2">{change}</p>}
         </div>
-        <div className={`${iconBg} p-3 rounded-lg flex items-center justify-center flex-shrink-0`}>
+        <div className={`${iconBg} p-4 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
           {icon}
         </div>
       </div>
@@ -53,27 +53,27 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
   const fastingMinutes = Math.floor((fastingProgress % 1) * 60);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 px-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       <StatCard
         label="Calories Today"
         value={(stats.caloriesConsumed ?? 0).toLocaleString()}
         goal={(stats.caloriesGoal ?? 0).toLocaleString()}
         icon={<Utensils className="w-6 h-6 text-white" />}
-        iconBg="bg-emerald-500"
+        iconBg="bg-gradient-to-br from-purple-500 to-purple-700"
       />
       <StatCard
         label="Fast Progress"
         value={`${fastingHours}h ${fastingMinutes}m`}
         goal={`${stats.fastingGoal}h`}
         icon={<Timer className="w-6 h-6 text-white" />}
-        iconBg="bg-blue-500"
+        iconBg="bg-gradient-to-br from-yellow-500 to-yellow-600"
       />
       <StatCard
         label="Workouts This Week"
         value={stats.workoutsThisWeek ?? 0}
         goal={stats.workoutGoal ?? 0}
         icon={<Activity className="w-6 h-6 text-white" />}
-        iconBg="bg-purple-500"
+        iconBg="bg-gradient-to-br from-purple-600 to-pink-600"
       />
       <StatCard
         label="Current Weight"
@@ -81,7 +81,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
         unit="lbs"
         change={`${stats.weightChange ?? 0} lbs this month`}
         icon={<TrendingDown className="w-6 h-6 text-white" />}
-        iconBg="bg-amber-500"
+        iconBg="bg-gradient-to-br from-yellow-400 to-orange-500"
       />
     </div>
   );

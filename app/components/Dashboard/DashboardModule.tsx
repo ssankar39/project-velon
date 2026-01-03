@@ -5,6 +5,9 @@ import { UserStats } from '@/app/types';
 import { StatsGrid } from './StatsGrid';
 import { ProgressGrid } from './ProgressGrid';
 import { Loader2 } from 'lucide-react';
+import { ActivityGraph } from '../ActivityGraph';
+import { LiveActivityCard } from '../LiveActivityCard';
+import { DatePicker } from '../DatePicker';
 
 interface DashboardModuleProps {
   stats: UserStats;
@@ -57,7 +60,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
   if (loading && !stats) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="flex items-center gap-2 text-lg text-gray-600">
+        <div className="flex items-center gap-2 text-lg text-gray-300">
           <Loader2 className="w-5 h-5 animate-spin" />
           Loading dashboard...
         </div>
@@ -66,24 +69,55 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
   }
 
   return (
-    <div className="animate-fadeIn">
-      <div className="text-center py-10 px-4">
-        <h2 className="text-4xl font-bold text-gray-800 drop-shadow-sm">
-          Your Fitness Dashboard
-        </h2>
-        {loading && (
-          <p className="text-sm text-gray-500 mt-2 flex items-center justify-center gap-1">
-            <Loader2 className="w-3 h-3 animate-spin" />
-            Updating...
-          </p>
-        )}
+    <div className="animate-fadeIn px-8">
+      {/* Date Picker */}
+      <DatePicker />
+
+      {/* Main Analytics Graph */}
+      <div className="mb-6">
+        <ActivityGraph title="Daily Calorie Progress" />
       </div>
 
-      <StatsGrid stats={stats} />
+      {/* Stats Overview */}
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-white mb-4">Quick Stats</h3>
+        <StatsGrid stats={stats} />
+      </div>
 
-      <div className="mb-8">
+      {/* Progress Grid */}
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-white mb-4">Goals Progress</h3>
         <ProgressGrid stats={stats} />
+      </div>
+
+      {/* Ongoing Activities */}
+      <div className="mb-6">
+        <h3 className="text-2xl font-bold text-white mb-4">Active Sessions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <LiveActivityCard
+            type="workout"
+            name="Morning Cardio"
+            duration="25:30"
+            totalTime="45:00"
+            status="active"
+          />
+          <LiveActivityCard
+            type="meal"
+            name="Breakfast Logged"
+            duration="08:15"
+            totalTime="24:00"
+            status="completed"
+          />
+          <LiveActivityCard
+            type="fasting"
+            name="Intermittent Fast"
+            duration="14:30"
+            totalTime="16:00"
+            status="active"
+          />
+        </div>
       </div>
     </div>
   );
 };
+

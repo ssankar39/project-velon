@@ -71,16 +71,24 @@ export async function GET(req: NextRequest) {
     const query: Record<string, unknown> = { userId: user._id.toString() };
 
     if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Parse date in local timezone to match the timestamps stored in the database
+      const [year, month, day] = date.split('-').map(Number);
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
       query.timestamp = { $gte: startOfDay, $lte: endOfDay };
     }
 
     const meals = await mealsCollection.find(query).sort({ timestamp: -1 }).toArray();
 
-    return NextResponse.json(meals, { status: 200 });
+    // Transform MongoDB documents to match the expected format
+    const transformedMeals = meals.map((meal) => ({
+      id: meal._id.toString(),
+      name: meal.name,
+      calories: meal.calories,
+      type: meal.type,
+    }));
+
+    return NextResponse.json(transformedMeals, { status: 200 });
   } catch (error) {
     console.error('Error fetching meals:', error);
     return NextResponse.json(

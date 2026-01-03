@@ -138,10 +138,10 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto p-4">
       {/* Add Food Card */}
-      <div className="bg-white rounded-lg p-6 shadow-sm">
+      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
         <div className="flex items-center gap-3 mb-6">
-          <Plus className="w-6 h-6 text-gray-700" />
-          <h3 className="text-2xl font-semibold text-gray-900">Add Food</h3>
+          <Plus className="w-6 h-6 text-purple-400" />
+          <h3 className="text-2xl font-semibold text-white">Add Food</h3>
         </div>
 
         <form onSubmit={handleAddFood} className="space-y-4">
@@ -152,7 +152,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
               value={formState.foodName}
               onChange={(e) => setFormState({ ...formState, foodName: e.target.value })}
               required
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -163,7 +163,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
               value={formState.calories}
               onChange={(e) => setFormState({ ...formState, calories: e.target.value })}
               required
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -173,7 +173,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
               onChange={(e) =>
                 setFormState({ ...formState, mealType: e.target.value as MealType })
               }
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
             >
               <option value="breakfast">Breakfast</option>
               <option value="lunch">Lunch</option>
@@ -185,7 +185,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -200,36 +200,36 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       </div>
 
       {/* Today's Meals Card */}
-      <div className="bg-white rounded-lg p-6 shadow-sm">
+      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
         <div className="flex items-center gap-3 mb-6">
-          <Calendar className="w-6 h-6 text-gray-700" />
-          <h3 className="text-2xl font-semibold text-gray-900">Today&apos;s Meals</h3>
+          <Calendar className="w-6 h-6 text-yellow-400" />
+          <h3 className="text-2xl font-semibold text-white">Today&apos;s Meals</h3>
         </div>
 
         {loading && meals.length === 0 ? (
-          <p className="text-gray-500 text-center py-8 flex items-center justify-center gap-2">
+          <p className="text-gray-300 text-center py-8 flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
             Loading meals...
           </p>
         ) : meals.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No meals added yet</p>
+          <p className="text-gray-400 text-center py-8">No meals added yet</p>
         ) : (
           <div className="space-y-3 mb-4">
             {meals.map((meal) => (
               <div
                 key={meal.id}
-                className="flex items-center justify-between p-3 bg-gray-50 border-l-4 border-indigo-500 rounded"
+                className="flex items-center justify-between p-3 glass-light border-l-4 border-purple-500 rounded-lg"
               >
                 <div className="flex-1">
-                  <p className="font-semibold text-gray-900">{meal.name}</p>
-                  <p className="text-sm text-gray-500 capitalize">{meal.type}</p>
+                  <p className="font-semibold text-white">{meal.name}</p>
+                  <p className="text-sm text-gray-400 capitalize">{meal.type}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <p className="text-lg font-semibold text-purple-600">{meal.calories} cal</p>
+                  <p className="text-lg font-semibold text-purple-400">{meal.calories} cal</p>
                   <button
                     onClick={() => handleDeleteMeal(meal.id)}
                     disabled={loading}
-                    className="text-red-500 hover:text-red-700 hover:scale-125 transition-transform disabled:opacity-50"
+                    className="text-red-400 hover:text-red-300 hover:scale-125 transition-transform disabled:opacity-50"
                   >
                     <Trash2 size={20} />
                   </button>
@@ -239,9 +239,9 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
           </div>
         )}
 
-        <div className="flex items-center justify-between p-4 bg-gray-100 rounded-lg border-t-2 border-gray-300">
-          <p className="font-semibold text-gray-900">Total Calories:</p>
-          <p className="text-2xl font-bold text-purple-600">{totalCalories.toLocaleString()}</p>
+        <div className="flex items-center justify-between p-4 glass-light rounded-lg border-t-2 border-purple-500/50">
+          <p className="font-semibold text-white">Total Calories:</p>
+          <p className="text-2xl font-bold text-purple-400">{totalCalories.toLocaleString()}</p>
         </div>
       </div>
     </div>

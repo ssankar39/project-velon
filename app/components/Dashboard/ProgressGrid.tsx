@@ -24,8 +24,8 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
   const offset = circumference - (Math.min(percentage, 100) / 100) * circumference;
 
   return (
-    <div className="bg-white rounded-lg p-6 shadow-sm flex flex-col items-center text-center">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{label}</h3>
+    <div className="glass rounded-2xl p-6 flex flex-col items-center text-center hover:scale-105 transition-transform duration-300 animate-fadeIn">
+      <h3 className="text-lg font-semibold text-white mb-4">{label}</h3>
       <div className="relative w-32 h-32 mb-2">
         <svg className="w-32 h-32" style={{ transform: 'rotate(-90deg)' }}>
           <circle
@@ -33,7 +33,7 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
             cy="64"
             r="45"
             fill="transparent"
-            stroke="#e5e7eb"
+            stroke="rgba(255, 255, 255, 0.1)"
             strokeWidth="8"
           />
           <circle
@@ -46,17 +46,17 @@ const CircularProgress: React.FC<CircularProgressProps> = ({
             strokeDasharray={circumference}
             strokeDashoffset={offset}
             strokeLinecap="round"
-            style={{ transition: 'stroke-dashoffset 0.3s ease' }}
+            style={{ transition: 'stroke-dashoffset 0.3s ease', filter: 'drop-shadow(0 0 8px ' + color + ')' }}
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-bold text-gray-900">
+          <span className="text-3xl font-bold text-white">
             {Math.round(percentage)}%
           </span>
         </div>
       </div>
-      <p className="text-sm text-gray-600">
-        {current} / {total} {unit}
+      <p className="text-sm text-gray-300">
+        <span className="text-white font-semibold">{current}</span> / {total} {unit}
       </p>
     </div>
   );
@@ -72,10 +72,10 @@ export const ProgressGrid: React.FC<ProgressGridProps> = ({ stats }) => {
   const workoutsPercentage = stats.workoutGoal ? (stats.workoutsThisWeek / stats.workoutGoal) * 100 : 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 px-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <CircularProgress
         percentage={caloriesPercentage}
-        color="#10b981"
+        color="#8b5cf6"
         label="Daily Calories"
         current={stats.caloriesConsumed}
         total={stats.caloriesGoal}
@@ -83,7 +83,7 @@ export const ProgressGrid: React.FC<ProgressGridProps> = ({ stats }) => {
       />
       <CircularProgress
         percentage={fastingPercentage}
-        color="#3b82f6"
+        color="#fbbf24"
         label="Fasting Goal"
         current={Math.floor(stats.fastingProgress)}
         total={stats.fastingGoal}
@@ -91,7 +91,7 @@ export const ProgressGrid: React.FC<ProgressGridProps> = ({ stats }) => {
       />
       <CircularProgress
         percentage={workoutsPercentage}
-        color="#8b5cf6"
+        color="#a78bfa"
         label="Weekly Workouts"
         current={stats.workoutsThisWeek}
         total={stats.workoutGoal}

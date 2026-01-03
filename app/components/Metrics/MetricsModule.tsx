@@ -137,75 +137,75 @@ export const MetricsModule: React.FC = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto p-4">
       {/* Log Metrics Card */}
-      <div className="bg-white rounded-lg p-6 shadow-sm">
+      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
         <div className="flex items-center gap-3 mb-6">
-          <Plus className="w-6 h-6 text-gray-700" />
-          <h3 className="text-2xl font-semibold text-gray-900">Log Metrics</h3>
+          <Plus className="w-6 h-6 text-purple-400" />
+          <h3 className="text-2xl font-semibold text-white">Log Metrics</h3>
         </div>
 
         <form onSubmit={handleAddMetric} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Weight (lbs)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Weight (lbs)</label>
             <input
               type="number"
               step="0.1"
               placeholder="e.g., 165.5"
               value={formState.weight}
               onChange={(e) => setFormState({ ...formState, weight: e.target.value })}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Body Fat %</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Body Fat %</label>
             <input
               type="number"
               step="0.1"
               placeholder="e.g., 18.5"
               value={formState.bodyFat}
               onChange={(e) => setFormState({ ...formState, bodyFat: e.target.value })}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">BMI</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">BMI</label>
             <input
               type="number"
               step="0.1"
               placeholder="e.g., 24.8"
               value={formState.bmi}
               onChange={(e) => setFormState({ ...formState, bmi: e.target.value })}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">BMR (kcal/day)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">BMR (kcal/day)</label>
             <input
               type="number"
               placeholder="e.g., 1650"
               value={formState.bmr}
               onChange={(e) => setFormState({ ...formState, bmr: e.target.value })}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">TDEE (kcal/day)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2">TDEE (kcal/day)</label>
             <input
               type="number"
               placeholder="e.g., 2400"
               value={formState.tdee}
               onChange={(e) => setFormState({ ...formState, tdee: e.target.value })}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 text-gray-900 placeholder-gray-400"
+              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -220,29 +220,29 @@ export const MetricsModule: React.FC = () => {
       </div>
 
       {/* Metrics History Card */}
-      <div className="bg-white rounded-lg p-6 shadow-sm">
+      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
         <div className="flex items-center gap-3 mb-6">
-          <BarChart3 className="w-6 h-6 text-gray-700" />
-          <h3 className="text-2xl font-semibold text-gray-900">Your Metrics</h3>
+          <BarChart3 className="w-6 h-6 text-purple-400" />
+          <h3 className="text-2xl font-semibold text-white">Your Metrics</h3>
         </div>
 
         {loading && metrics.length === 0 ? (
-          <p className="text-gray-500 text-center py-8 flex items-center justify-center gap-2">
+          <p className="text-gray-400 text-center py-8 flex items-center justify-center gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
             Loading metrics...
           </p>
         ) : !latestMetric ? (
-          <p className="text-gray-500 text-center py-8">No metrics logged yet</p>
+          <p className="text-gray-400 text-center py-8">No metrics logged yet</p>
         ) : (
           <div className="space-y-4">
             {/* Current Stats */}
-            <div className="bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg p-4">
-              <p className="text-sm text-gray-600 mb-2">Latest Entry - {formatDate(latestMetric.timestamp)}</p>
+            <div className="glass-light border-l-4 border-purple-500 rounded-lg p-4">
+              <p className="text-sm text-gray-300 mb-2">Latest Entry - {formatDate(latestMetric.timestamp)}</p>
               <div className="grid grid-cols-2 gap-3">
                 {latestMetric.weight && (
                   <div>
-                    <p className="text-xs text-gray-600">Weight</p>
-                    <p className="text-lg font-bold text-purple-700">
+                    <p className="text-xs text-gray-400">Weight</p>
+                    <p className="text-lg font-bold text-purple-400">
                       {latestMetric.weight} lbs
                       {getWeightChange() && (
                         <span className={getWeightChange()?.startsWith('-') ? 'text-green-600' : 'text-red-600'}>
@@ -254,20 +254,20 @@ export const MetricsModule: React.FC = () => {
                 )}
                 {latestMetric.bodyFat && (
                   <div>
-                    <p className="text-xs text-gray-600">Body Fat</p>
-                    <p className="text-lg font-bold text-purple-700">{latestMetric.bodyFat}%</p>
+                    <p className="text-xs text-gray-400">Body Fat</p>
+                    <p className="text-lg font-bold text-purple-400">{latestMetric.bodyFat}%</p>
                   </div>
                 )}
                 {latestMetric.bmi && (
                   <div>
-                    <p className="text-xs text-gray-600">BMI</p>
-                    <p className="text-lg font-bold text-purple-700">{latestMetric.bmi}</p>
+                    <p className="text-xs text-gray-400">BMI</p>
+                    <p className="text-lg font-bold text-purple-400">{latestMetric.bmi}</p>
                   </div>
                 )}
                 {latestMetric.bmr && (
                   <div>
-                    <p className="text-xs text-gray-600">BMR</p>
-                    <p className="text-lg font-bold text-purple-700">{latestMetric.bmr} kcal</p>
+                    <p className="text-xs text-gray-400">BMR</p>
+                    <p className="text-lg font-bold text-purple-400">{latestMetric.bmr} kcal</p>
                   </div>
                 )}
               </div>
@@ -276,12 +276,12 @@ export const MetricsModule: React.FC = () => {
             {/* History */}
             {metrics.length > 1 && (
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">History</p>
+                <p className="text-sm font-semibold text-gray-300 mb-2">History</p>
                 <div className="space-y-2 max-h-40 overflow-y-auto">
                   {metrics.slice(1, 6).map((metric) => (
-                    <div key={metric.id} className="text-sm p-2 bg-gray-50 rounded">
-                      <p className="text-gray-600 font-medium">{formatDate(metric.timestamp)}</p>
-                      <p className="text-gray-500">
+                    <div key={metric.id} className="text-sm p-2 glass-light rounded">
+                      <p className="text-gray-300 font-medium">{formatDate(metric.timestamp)}</p>
+                      <p className="text-gray-400">
                         {metric.weight && `Weight: ${metric.weight} lbs`}
                         {metric.weight && metric.bodyFat && ' • '}
                         {metric.bodyFat && `Body Fat: ${metric.bodyFat}%`}
