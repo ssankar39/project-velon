@@ -21,6 +21,9 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [weightGoal, setWeightGoal] = useState<number | null>(null);
+  const [showGoalInput, setShowGoalInput] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -36,9 +39,24 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
   useEffect(() => {
     if (currentUser) {
       fetchStats();
+      fetchWeightGoal();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
+
+  const fetchWeightGoal = async () => {
+    if (!currentUser) return;
+    try {
+      const response = await fetch(`/api/user/preferences?userId=${encodeURIComponent(currentUser.email)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setWeightGoal(data.weightGoal || null);
+        setShowGoalInput(!data.weightGoal);
+      }
+    } catch (error) {
+      console.error('Error fetching weight goal:', error);
+    }
+  };
 
   const fetchStats = async () => {
     if (!currentUser) return;
@@ -52,6 +70,28 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
       console.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveWeightGoal = async () => {
+    if (!currentUser || !goalInput) return;
+    try {
+      const response = await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: currentUser.email,
+          weightGoal: parseFloat(goalInput),
+        }),
+      });
+      if (response.ok) {
+        setWeightGoal(parseFloat(goalInput));
+        setShowGoalInput(false);
+        setGoalInput('');
+      }
+    } catch (error) {
+      console.error('Error saving weight goal:', error);
+      alert('Failed to save weight goal');
     }
   };
 
@@ -73,11 +113,35 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
 
       {/* Main Analytics Graph */}
       <div className="mb-6">
-        <ActivityGraph 
-          title="Weekly Calorie Burn Progress" 
-          metricType="calories"
-          userId={currentUser?.email}
-        />
+        {showGoalInput || !weightGoal ? (
+          <div className="glass rounded-2xl p-6 animate-fadeIn">
+            <h3 className="text-xl font-bold text-white mb-4">Set Your Weight Goal</h3>
+            <p className="text-gray-400 mb-4">Enter your target weight to track your progress on the graph.</p>
+            <div className="flex gap-3 max-w-md">
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Enter weight goal (lbs)"
+                value={goalInput}
+                onChange={(e) => setGoalInput(e.target.value)}
+                className="flex-1 px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              />
+              <button
+                onClick={saveWeightGoal}
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 transition-all"
+              >
+                Save Goal
+              </button>
+            </div>
+          </div>
+        ) : (
+          <ActivityGraph 
+            title="Weight Progress" 
+            metricType="weight"
+            userId={currentUser?.email}
+            weightGoal={weightGoal}
+          />
+        )}
       </div>
 
       {/* Stats Overview */}

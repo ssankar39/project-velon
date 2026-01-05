@@ -13,7 +13,7 @@ import {
   LogOut,
 } from 'lucide-react';
 
-type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile';
+type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile' | 'settings';
 
 interface GlassSidebarProps {
   activeModule: ModuleType;
@@ -99,10 +99,20 @@ export const GlassSidebar: React.FC<GlassSidebarProps> = ({
         </button>
 
         <button
-          className="group relative w-14 h-14 rounded-xl flex items-center justify-center glass-light hover:bg-purple-600/30 transition-all duration-300"
+          onClick={() => onModuleChange('settings')}
+          className={`group relative w-14 h-14 rounded-xl flex items-center justify-center transition-all duration-300 ${
+            activeModule === 'settings'
+              ? 'bg-purple-600 shadow-lg'
+              : 'glass-light hover:bg-purple-600/30'
+          }`}
           title="Settings"
         >
-          <Settings size={24} className="text-gray-300 group-hover:text-white transition-all" />
+          <Settings
+            size={24}
+            className={`transition-all ${
+              activeModule === 'settings' ? 'text-white' : 'text-gray-300 group-hover:text-white'
+            }`}
+          />
 
           {/* Tooltip */}
           <div className="absolute left-full ml-4 px-3 py-2 bg-gray-800 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap">

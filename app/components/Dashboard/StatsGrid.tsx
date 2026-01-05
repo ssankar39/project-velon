@@ -49,8 +49,20 @@ interface StatsGridProps {
 
 export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
   const fastingProgress = stats.fastingProgress ?? 0;
-  const fastingHours = Math.floor(fastingProgress);
-  const fastingMinutes = Math.floor((fastingProgress % 1) * 60);
+  const fastingGoal = stats.fastingGoal ?? 16;
+  
+  // Format fasting progress display
+  let fastingDisplay = '';
+  if (fastingProgress < 1) {
+    // Less than 1 hour - show in minutes
+    const minutes = Math.round(fastingProgress * 60);
+    fastingDisplay = `${minutes} min / ${fastingGoal}h`;
+  } else {
+    // 1 hour or more - show in hours and minutes
+    const hours = Math.floor(fastingProgress);
+    const minutes = Math.round((fastingProgress % 1) * 60);
+    fastingDisplay = `${hours}h ${minutes}m / ${fastingGoal}h`;
+  }
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -63,8 +75,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
       />
       <StatCard
         label="Fast Progress"
-        value={`${fastingHours}h ${fastingMinutes}m`}
-        goal={`${stats.fastingGoal}h`}
+        value={fastingDisplay}
         icon={<Timer className="w-6 h-6 text-white" />}
         iconBg="bg-gradient-to-br from-yellow-500 to-yellow-600"
       />

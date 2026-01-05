@@ -11,6 +11,7 @@ import { FastingTracker } from '@/app/components/Fasting/FastingTracker';
 import WorkoutsModule from '@/app/components/Workouts/WorkoutsModule';
 import MetricsModule from '@/app/components/Metrics/MetricsModule';
 import { ProfilePage } from '@/app/components/Profile/ProfilePage';
+import { SettingsPage } from '@/app/components/Settings/SettingsPage';
 import { UserStats, Meal, FastingState } from '@/app/types';
 
 interface AuthUser {
@@ -19,12 +20,13 @@ interface AuthUser {
   name?: string;
 }
 
-type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile';
+type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile' | 'settings';
 
 export default function Home() {
   const [loading, setLoading] = useState(true);
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [userStats, setUserStats] = useState<UserStats>({
     caloriesConsumed: 1847,
     caloriesGoal: 2000,
@@ -74,6 +76,13 @@ export default function Home() {
       ...prev,
       fastingProgress: progress,
     }));
+    // Only trigger refresh when fasting state changes (start/end), not on progress updates
+    // This is handled by checking if isActive changed
+  };
+
+  const handleFastingStateChange = () => {
+    // This is called only when starting or ending a fast
+    setRefreshKey(prev => prev + 1);
   };
 
   if (loading) {
@@ -111,17 +120,18 @@ export default function Home() {
 
       {/* Main Content Area */}
       <main className="ml-20 mr-80 mt-20 min-h-screen p-8">
-        {activeModule === 'dashboard' && <DashboardModule stats={userStats} />}
+        {activeModule === 'dashboard' && <DashboardModule key={refreshKey} stats={userStats} />}
         {activeModule === 'calories' && <CalorieTracker onMealsUpdate={handleMealsUpdate} />}
         {activeModule === 'calculator' && <CalculatorModule />}
-        {activeModule === 'fasting' && <FastingTracker onFastingUpdate={handleFastingUpdate} />}
+        {activeModule === 'fasting' && <FastingTracker onFastingUpdate={handleFastingUpdate} onStateChange={handleFastingStateChange} />}
         {activeModule === 'workouts' && <WorkoutsModule />}
         {activeModule === 'metrics' && <MetricsModule />}
         {activeModule === 'profile' && <ProfilePage />}
+        {activeModule === 'settings' && <SettingsPage />}
       </main>
 
       {/* Right Sidebar */}
-      <RightSidebar />
+      <RightSidebar key={refreshKey} />
     </div>
   );
 }

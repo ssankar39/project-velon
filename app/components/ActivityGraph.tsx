@@ -13,6 +13,7 @@ interface ActivityGraphProps {
   title?: string;
   metricType?: 'calories' | 'workouts' | 'weight' | 'fasting';
   userId?: string;
+  weightGoal?: number | null;
 }
 
 interface AuthUser {
@@ -42,6 +43,7 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   title = 'Weekly Progress',
   metricType = 'calories',
   userId,
+  weightGoal,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [data, setData] = useState<DataPoint[]>([]);
@@ -69,93 +71,107 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
       const user: AuthUser = JSON.parse(storedUser);
       const userEmail = userId || user.email;
 
-      // Get last 7 days
-      const weekData: DataPoint[] = [];
-      const today = new Date();
-      
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(today);
-        date.setDate(date.getDate() - i);
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-
-        weekData.push({
-          day: dayName,
-          actual: 0,
-          target: 0,
-        });
-      }
+      let chartData: DataPoint[] = [];
 
       // Fetch data based on metric type
-      if (metricType === 'calories') {
-        // Fetch workouts for the week
-        const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
-        const workouts: Workout[] = await response.json();
-        
-        const caloriesGoal = 2000; // Daily calorie burn goal
-        workouts.forEach((workout) => {
-          const workoutDate = new Date(workout.timestamp);
-          const dayIndex = Math.floor((today.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
-          if (dayIndex >= 0 && dayIndex < 7) {
-            weekData[6 - dayIndex].actual += workout.caloriesBurned;
-            weekData[6 - dayIndex].target = caloriesGoal;
-          }
-        });
-      } else if (metricType === 'workouts') {
-        // Fetch workout count for the week
-        const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
-        const workouts: Workout[] = await response.json();
-        
-        const workoutGoal = 1; // Daily workout goal
-        const workoutCounts: Record<string, number> = {};
-        
-        workouts.forEach((workout) => {
-          const workoutDate = new Date(workout.timestamp).toISOString().split('T')[0];
-          workoutCounts[workoutDate] = (workoutCounts[workoutDate] || 0) + 1;
-        });
-
-        weekData.forEach((day, index) => {
-          const date = new Date(today);
-          date.setDate(date.getDate() - (6 - index));
-          const dateStr = date.toISOString().split('T')[0];
-          day.actual = workoutCounts[dateStr] || 0;
-          day.target = workoutGoal;
-        });
-      } else if (metricType === 'fasting') {
-        // Fetch fasting sessions for the week
-        const response = await fetch(`/api/fasting?userId=${encodeURIComponent(userEmail)}`);
-        const sessions: FastingSession[] = await response.json();
-        
-        const fastingGoal = 16; // Hours
-        sessions.forEach((session) => {
-          if (session.completedAt) {
-            const sessionDate = new Date(session.completedAt);
-            const dayIndex = Math.floor((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
-            if (dayIndex >= 0 && dayIndex < 7) {
-              weekData[6 - dayIndex].actual = parseInt(session.protocol);
-              weekData[6 - dayIndex].target = fastingGoal;
-            }
-          }
-        });
-      } else if (metricType === 'weight') {
-        // Fetch metrics for the week
+      if (metricType === 'weight') {
+        // Fetch all recent metrics (not limited to week)
         const response = await fetch(`/api/metrics?userId=${encodeURIComponent(userEmail)}`);
         const metrics: Metric[] = await response.json();
         
-        const weightGoal = metrics.length > 0 && metrics[0].weight ? metrics[0].weight * 0.99 : 180; // 1% reduction goal
+        const goalWeight = weightGoal || 180; // Use provided goal or default
         
-        metrics.forEach((metric) => {
-          if (metric.weight) {
-            const metricDate = new Date(metric.timestamp);
-            const dayIndex = Math.floor((today.getTime() - metricDate.getTime()) / (1000 * 60 * 60 * 24));
-            if (dayIndex >= 0 && dayIndex < 7) {
-              weekData[6 - dayIndex].actual = metric.weight;
-              weekData[6 - dayIndex].target = weightGoal;
-            }
-          }
+        // Take last 10 metric entries or all if less than 10
+        const recentMetrics = metrics.slice(0, 10).reverse();
+        
+        chartData = recentMetrics.map((metric) => {
+          const date = new Date(metric.timestamp);
+          const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          
+          return {
+            day: label,
+            actual: metric.weight || 0,
+            target: goalWeight,
+          };
         });
+
+        // If no metrics, show empty state
+        if (chartData.length === 0) {
+          chartData = [{ day: 'No data', actual: 0, target: goalWeight }];
+        }
+      } else {
+        // For other metric types, keep weekly view
+        const weekData: DataPoint[] = [];
+        const today = new Date();
+        
+        for (let i = 6; i >= 0; i--) {
+          const date = new Date(today);
+          date.setDate(date.getDate() - i);
+          const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+
+          weekData.push({
+            day: dayName,
+            actual: 0,
+            target: 0,
+          });
+        }
+
+        if (metricType === 'calories') {
+          // Fetch workouts for the week
+          const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
+          const workouts: Workout[] = await response.json();
+          
+          const caloriesGoal = 2000; // Daily calorie burn goal
+          workouts.forEach((workout) => {
+            const workoutDate = new Date(workout.timestamp);
+            const dayIndex = Math.floor((today.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (dayIndex >= 0 && dayIndex < 7) {
+              weekData[6 - dayIndex].actual += workout.caloriesBurned;
+              weekData[6 - dayIndex].target = caloriesGoal;
+            }
+          });
+        } else if (metricType === 'workouts') {
+          // Fetch workout count for the week
+          const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
+          const workouts: Workout[] = await response.json();
+          
+          const workoutGoal = 1; // Daily workout goal
+          const workoutCounts: Record<string, number> = {};
+          
+          workouts.forEach((workout) => {
+            const workoutDate = new Date(workout.timestamp).toISOString().split('T')[0];
+            workoutCounts[workoutDate] = (workoutCounts[workoutDate] || 0) + 1;
+          });
+
+          weekData.forEach((day, index) => {
+            const date = new Date(today);
+            date.setDate(date.getDate() - (6 - index));
+            const dateStr = date.toISOString().split('T')[0];
+            day.actual = workoutCounts[dateStr] || 0;
+            day.target = workoutGoal;
+          });
+        } else if (metricType === 'fasting') {
+          // Fetch fasting sessions for the week
+          const response = await fetch(`/api/fasting?userId=${encodeURIComponent(userEmail)}`);
+          const sessions: FastingSession[] = await response.json();
+          
+          const fastingGoal = 16; // Hours
+          sessions.forEach((session) => {
+            if (session.completedAt) {
+              const sessionDate = new Date(session.completedAt);
+              const dayIndex = Math.floor((today.getTime() - sessionDate.getTime()) / (1000 * 60 * 60 * 24));
+              if (dayIndex >= 0 && dayIndex < 7) {
+                weekData[6 - dayIndex].actual = parseInt(session.protocol);
+                weekData[6 - dayIndex].target = fastingGoal;
+              }
+            }
+          });
+        }
+        
+        chartData = weekData;
       }
 
-      setData(weekData);
+      setData(chartData);
     } catch (error) {
       console.error('Error fetching weekly data:', error);
       setDefaultData();
@@ -335,8 +351,9 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
                 y={Math.min(getY(data[hoveredIndex].actual), getY(data[hoveredIndex].target)) - 70}
                 width="120"
                 height="60"
+                style={{ overflow: 'visible', zIndex: 50 }}
               >
-                <div className="glass-light rounded-lg p-3 text-center shadow-xl">
+                <div className="glass-light rounded-lg p-3 text-center shadow-xl border border-purple-500/30" style={{ position: 'relative', zIndex: 50 }}>
                   <p className="text-xs text-gray-400 mb-1">{data[hoveredIndex].day}</p>
                   <p className="text-sm text-purple-400 font-semibold">
                     Actual: {data[hoveredIndex].actual}

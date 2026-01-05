@@ -4,9 +4,9 @@ import { getCollection } from '@/lib/mongodb';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, name, duration, intensity, caloriesBurned } = body;
+    const { userId, name, sets, reps, exerciseId, bodyPart, target, equipment } = body;
 
-    if (!userId || !name || !duration || !intensity) {
+    if (!userId || !name) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -25,18 +25,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Calculate calories burned based on sets and reps
+    // Simple formula: (sets * reps) * 0.5 (can be adjusted)
+    const totalReps = (sets || 0) * (reps || 0);
+    const estimatedCalories = Math.round(totalReps * 0.5);
+
     const result = await workoutsCollection.insertOne({
       userId: user._id.toString(),
       name,
-      duration: parseInt(duration),
-      intensity,
-      caloriesBurned: caloriesBurned ? parseInt(caloriesBurned) : null,
+      sets: sets ? parseInt(sets) : null,
+      reps: reps ? parseInt(reps) : null,
+      exerciseId: exerciseId || null,
+      bodyPart: bodyPart || null,
+      target: target || null,
+      equipment: equipment || null,
+      caloriesBurned: estimatedCalories,
       timestamp: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
-    return NextResponse.json({ id: result.insertedId.toString(), ...body }, { status: 201 });
+    return NextResponse.json({ 
+      id: result.insertedId.toString(), 
+      ...body,
+      caloriesBurned: estimatedCalories,
+      timestamp: new Date().toISOString(),
+    }, { status: 201 });
   } catch (error) {
     console.error('Error creating workout:', error);
     return NextResponse.json(

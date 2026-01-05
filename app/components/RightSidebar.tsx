@@ -200,25 +200,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
               status="completed"
             />
           )}
-          {activeFasting && (
-            <LiveActivityCard
-              type="fasting"
-              name={`${activeFasting.protocol}h Fast`}
-              duration={calculateFastingProgress().duration}
-              totalTime={calculateFastingProgress().totalTime}
-              status="active"
-            />
-          )}
-          {latestMetric && (
-            <LiveActivityCard
-              type="progress"
-              name="Latest Metric"
-              duration={formatMetricValue()}
-              totalTime={getTimeSinceMetric()}
-              status="completed"
-            />
-          )}
-          {!activeWorkout && !activeFasting && !latestMetric && (
+          {!activeWorkout && (
             <div className="text-center py-8 glass-light rounded-xl">
               <p className="text-gray-400 text-sm">No active sessions</p>
               <p className="text-xs text-gray-500 mt-1">Start tracking to see live data</p>

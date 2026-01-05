@@ -44,29 +44,6 @@ export const ModernTopBar: React.FC<ModernTopBarProps> = ({
         </div>
       </div>
 
-      {/* Center: Active Status Pill */}
-      <div className="glass-light px-6 py-3 rounded-full flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-sm text-gray-300">
-            <span className="text-white font-semibold">{activeUsers}</span> of{' '}
-            <span className="text-white font-semibold">{totalUsers}</span> goals active
-          </span>
-        </div>
-
-        {onBreak > 0 && (
-          <>
-            <div className="w-px h-6 bg-white/20" />
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-yellow-500" />
-              <span className="text-sm text-gray-300">
-                <span className="text-white font-semibold">{onBreak}</span> resting
-              </span>
-            </div>
-          </>
-        )}
-      </div>
-
       {/* Right: Admin Profile */}
       <div className="flex items-center gap-4">
         <div className="text-right">

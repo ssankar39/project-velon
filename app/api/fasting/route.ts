@@ -69,7 +69,28 @@ export async function GET(req: NextRequest) {
 
     const sessions = await fastingCollection.find({ userId: user._id.toString() }).sort({ startTime: -1 }).toArray();
 
-    return NextResponse.json(sessions, { status: 200 });
+    // Auto-complete sessions that have passed their end time
+    const now = new Date();
+    const updatedSessions = await Promise.all(
+      sessions.map(async (session) => {
+        if (session.isActive && session.endTime && new Date(session.endTime) < now) {
+          await fastingCollection.updateOne(
+            { _id: session._id },
+            { 
+              $set: { 
+                isActive: false, 
+                completedAt: session.endTime,
+                updatedAt: new Date() 
+              } 
+            }
+          );
+          return { ...session, id: session._id.toString(), isActive: false, completedAt: session.endTime };
+        }
+        return { ...session, id: session._id.toString() };
+      })
+    );
+
+    return NextResponse.json(updatedSessions, { status: 200 });
   } catch (error) {
     console.error('Error fetching fasting sessions:', error);
     return NextResponse.json(

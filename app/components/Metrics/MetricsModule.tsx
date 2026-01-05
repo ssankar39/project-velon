@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Loader2, BarChart3 } from 'lucide-react';
+import { Plus, Loader2, BarChart3, ArrowUp, ArrowDown, Calculator } from 'lucide-react';
+import { calculateBMR } from '@/app/utils/calculations';
 
 interface Metric {
   id: string;
@@ -19,10 +20,19 @@ interface AuthUser {
   name?: string;
 }
 
+interface UserProfile {
+  age?: number;
+  gender?: 'male' | 'female';
+  height?: number;
+  heightUnit?: 'in' | 'cm';
+  activityLevel?: number;
+}
+
 export const MetricsModule: React.FC = () => {
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [formState, setFormState] = useState({
     weight: '',
     bodyFat: '',
@@ -45,6 +55,53 @@ export const MetricsModule: React.FC = () => {
     }
   }, [currentUser]);
 
+  const fetchUserProfile = useCallback(async () => {
+    if (!currentUser?.email) return;
+    try {
+      const response = await fetch(`/api/user/preferences?userId=${encodeURIComponent(currentUser.email)}`);
+      const data = await response.json();
+      setUserProfile(data || {});
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  }, [currentUser]);
+
+  const handleCalculateTDEE = () => {
+    if (!formState.weight) {
+      alert('Please enter your weight first');
+      return;
+    }
+
+    // Use profile data or defaults
+    const age = userProfile?.age || 30;
+    const gender = userProfile?.gender || 'male';
+    const height = userProfile?.height || 70;
+    const heightUnit = userProfile?.heightUnit || 'in';
+    const activityLevel = userProfile?.activityLevel || 1.55; // Moderate activity
+    const weight = parseFloat(formState.weight);
+
+    if (!age || !height) {
+      alert('Please set up your profile with age and height to calculate TDEE');
+      return;
+    }
+
+    const result = calculateBMR({
+      age,
+      weight,
+      height,
+      weightUnit: 'lbs',
+      heightUnit,
+      gender,
+      activityLevel,
+    });
+
+    setFormState({
+      ...formState,
+      bmr: result.bmr.toString(),
+      tdee: result.tdee.toString(),
+    });
+  };
+
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
@@ -59,8 +116,9 @@ export const MetricsModule: React.FC = () => {
   useEffect(() => {
     if (currentUser) {
       fetchMetrics();
+      fetchUserProfile();
     }
-  }, [currentUser, fetchMetrics]);
+  }, [currentUser, fetchMetrics, fetchUserProfile]);
 
   const handleAddMetric = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -192,7 +250,17 @@ export const MetricsModule: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">TDEE (kcal/day)</label>
+            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center justify-between">
+              <span>TDEE (kcal/day)</span>
+              <button
+                type="button"
+                onClick={handleCalculateTDEE}
+                className="text-xs px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 rounded-md flex items-center gap-1 transition-colors"
+              >
+                <Calculator className="w-3 h-3" />
+                Calculate
+              </button>
+            </label>
             <input
               type="number"
               placeholder="e.g., 2400"
@@ -244,12 +312,17 @@ export const MetricsModule: React.FC = () => {
                     <p className="text-xs text-gray-400">Weight</p>
                     <p className="text-lg font-bold text-purple-400">
                       {latestMetric.weight} lbs
-                      {getWeightChange() && (
-                        <span className={getWeightChange()?.startsWith('-') ? 'text-green-600' : 'text-red-600'}>
-                          {' '}({getWeightChange()})
-                        </span>
-                      )}
                     </p>
+                    {getWeightChange() && (
+                      <div className={`flex items-center gap-1 text-sm ${getWeightChange()?.startsWith('-') ? 'text-red-400' : 'text-green-400'}`}>
+                        {getWeightChange()?.startsWith('-') ? (
+                          <ArrowDown className="w-4 h-4" />
+                        ) : (
+                          <ArrowUp className="w-4 h-4" />
+                        )}
+                        <span>{Math.abs(parseFloat(getWeightChange() || '0'))} lbs</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {latestMetric.bodyFat && (

@@ -10,3 +10,4 @@ export { RightSidebar } from './RightSidebar';
 export { ActivityGraph } from './ActivityGraph';
 export { LiveActivityCard } from './LiveActivityCard';
 export { DatePicker } from './DatePicker';
+export { SettingsPage } from './Settings/SettingsPage';

@@ -6,6 +6,7 @@ import { Clock, Loader2 } from 'lucide-react';
 
 interface FastingTrackerProps {
   onFastingUpdate: (state: FastingState, progress: number) => void;
+  onStateChange?: () => void;
 }
 
 interface FormState {
@@ -20,7 +21,7 @@ interface AuthUser {
   name?: string;
 }
 
-export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate }) => {
+export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate, onStateChange }) => {
   const [formState, setFormState] = useState<FormState>({
     protocol: '16',
     customHours: 16,
@@ -51,6 +52,43 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
       }
     }
   }, []);
+
+  // Fetch active fasting session on mount
+  useEffect(() => {
+    if (currentUser) {
+      fetchActiveFastingSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
+
+  const fetchActiveFastingSession = async () => {
+    if (!currentUser?.email) return;
+
+    try {
+      const response = await fetch(`/api/fasting?userId=${encodeURIComponent(currentUser.email)}`);
+      if (!response.ok) return;
+
+      const sessions = await response.json();
+      const activeSession = sessions.find((s: { isActive: boolean; endTime: string }) => {
+        if (!s.isActive) return false;
+        // Check if session hasn't ended yet
+        return new Date(s.endTime) > new Date();
+      });
+
+      if (activeSession) {
+        setSessionId(activeSession.id);
+        setFastingState({
+          isActive: true,
+          startTime: new Date(activeSession.startTime),
+          endTime: new Date(activeSession.endTime),
+          protocol: activeSession.protocol,
+          customHours: null,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching active fasting session:', error);
+    }
+  };
 
   // Timer effect
   useEffect(() => {
@@ -134,16 +172,23 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
       const session = await response.json();
       setSessionId(session.id);
 
-      setFastingState({
+      const newFastingState = {
         isActive: true,
         startTime,
         endTime,
         protocol: formState.protocol,
         customHours: formState.protocol === 'custom' ? formState.customHours : null,
-      });
+      };
+
+      setFastingState(newFastingState);
 
       setTimeRemaining('');
       setProgressPercent(0);
+      
+      // Immediately notify parent of new fasting session
+      onFastingUpdate(newFastingState, 0);
+      // Trigger refresh of sidebar and dashboard
+      onStateChange?.();
     } catch (error) {
       console.error('Error starting fasting session:', error);
       alert('Failed to start fasting session');
@@ -153,7 +198,13 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
   };
 
   const handleEndFast = async () => {
-    if (!sessionId || !currentUser) return;
+    if (!sessionId || !currentUser) {
+      console.error('Cannot end fast - sessionId:', sessionId, 'currentUser:', currentUser);
+      alert('Cannot end fast: Session not found');
+      return;
+    }
+
+    console.log('Ending fast session:', sessionId);
 
     try {
       setLoading(true);
@@ -166,7 +217,11 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
         }),
       });
 
+      console.log('End fast response status:', response.status);
+
       if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Error response:', errorData);
         throw new Error('Failed to end fasting session');
       }
 
@@ -181,6 +236,8 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate 
       setProgressPercent(0);
       setFormState({ ...formState, startTime: '' });
       setSessionId('');
+      // Trigger refresh of sidebar and dashboard
+      onStateChange?.();
     } catch (error) {
       console.error('Error ending fasting session:', error);
       alert('Failed to end fasting session');

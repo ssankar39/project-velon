@@ -72,19 +72,68 @@ export async function GET(req: NextRequest) {
     const latestMetric = await metricsCollection
       .findOne({ userId }, { sort: { timestamp: -1 } });
 
-    // Get active fasting session
+    // Get metric from a month ago to calculate weight change
+    const monthAgo = new Date();
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    const previousMetric = await metricsCollection
+      .findOne(
+        { 
+          userId,
+          timestamp: { $lte: monthAgo }
+        }, 
+        { sort: { timestamp: -1 } }
+      );
+
+    // Calculate weight change
+    let weightChange = 0;
+    if (latestMetric && (latestMetric as any).weight) {
+      if (previousMetric && (previousMetric as any).weight) {
+        weightChange = (latestMetric as any).weight - (previousMetric as any).weight;
+      }
+    }
+
+    // Get active fasting session or most recent completed one
     const fastingCollection = await getCollection('FastingSession');
+    const now = new Date();
     const activeFasting = await fastingCollection
-      .findOne({ userId, isActive: true }, { sort: { startTime: -1 } });
+      .findOne({ 
+        userId, 
+        isActive: true,
+        endTime: { $gt: now }
+      }, { sort: { startTime: -1 } });
 
     let fastingProgress = 0;
+    let fastingGoal = 16;
+    
     if (activeFasting) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const now = new Date();
+      // Active session - show current progress
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hoursElapsed = (now.getTime() - new Date((activeFasting as any).startTime).getTime()) / (1000 * 60 * 60);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      fastingProgress = Math.min(hoursElapsed, parseInt((activeFasting as any).protocol) || 16);
+      fastingGoal = parseInt((activeFasting as any).protocol) || 16;
+      fastingProgress = Math.min(hoursElapsed, fastingGoal);
+    } else {
+      // No active session - show most recent completed fast from today
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      
+      const completedFasting = await fastingCollection
+        .findOne({ 
+          userId, 
+          isActive: false,
+          completedAt: { $gte: startOfToday }
+        }, { sort: { completedAt: -1 } });
+
+      if (completedFasting) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const startTime = new Date((completedFasting as any).startTime);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const completedTime = new Date((completedFasting as any).completedAt);
+        const hoursCompleted = (completedTime.getTime() - startTime.getTime()) / (1000 * 60 * 60);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        fastingGoal = parseInt((completedFasting as any).protocol) || 16;
+        fastingProgress = hoursCompleted;
+      }
     }
 
     // Get workouts this week
@@ -106,14 +155,13 @@ export async function GET(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       caloriesGoal: (preferences as any).calorieGoal,
       fastingProgress: Math.round(fastingProgress * 100) / 100,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      fastingGoal: parseInt((activeFasting as any)?.protocol || '16'),
+      fastingGoal,
       workoutsThisWeek,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       workoutGoal: (preferences as any).workoutGoal,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       currentWeight: (latestMetric as any)?.weight || 0,
-      weightChange: 0,
+      weightChange: Math.round(weightChange * 10) / 10,
     };
 
     return NextResponse.json(stats, { status: 200 });

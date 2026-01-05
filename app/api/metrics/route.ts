@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
 
     console.log('User found:', user._id);
 
+    const timestamp = new Date();
     const metric = await metricsCollection.insertOne({
       userId: user._id.toString(),
       weight: weight ? parseFloat(weight) : null,
@@ -49,13 +50,22 @@ export async function POST(req: NextRequest) {
       bmr: bmr ? parseFloat(bmr) : null,
       tdee: tdee ? parseFloat(tdee) : null,
       bmi: bmi ? parseFloat(bmi) : null,
-      timestamp: new Date(),
+      timestamp,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
 
     console.log('Metric inserted:', metric.insertedId);
-    return NextResponse.json({ id: metric.insertedId.toString(), ...body }, { status: 201 });
+    return NextResponse.json({ 
+      id: metric.insertedId.toString(), 
+      weight: weight ? parseFloat(weight) : null,
+      bodyFat: bodyFat ? parseFloat(bodyFat) : null,
+      bmr: bmr ? parseFloat(bmr) : null,
+      tdee: tdee ? parseFloat(tdee) : null,
+      bmi: bmi ? parseFloat(bmi) : null,
+      timestamp: timestamp.toISOString(),
+      userId: user._id.toString()
+    }, { status: 201 });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     console.error('Error creating metric:', errorMessage);

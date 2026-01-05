@@ -4,12 +4,18 @@ import { ObjectId } from 'mongodb';
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> | { id: string } }
 ) {
   try {
-    const { id } = params;
+    const resolvedParams = await Promise.resolve(params);
+    const { id } = resolvedParams;
+    
+    console.log('PATCH /api/fasting/[id] - ID:', id);
+    
     const body = await req.json();
     const { isActive, completedAt, endTime } = body;
+
+    console.log('PATCH /api/fasting/[id] - Body:', body);
 
     const fastingCollection = await getCollection('FastingSession');
     const result = await fastingCollection.updateOne(
@@ -23,6 +29,8 @@ export async function PATCH(
         },
       }
     );
+
+    console.log('PATCH /api/fasting/[id] - Update result:', result);
 
     if (result.matchedCount === 0) {
       return NextResponse.json(
