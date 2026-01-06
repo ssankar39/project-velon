@@ -155,12 +155,15 @@ export async function GET(req: NextRequest) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       caloriesGoal: (preferences as any).calorieGoal,
       fastingProgress: Math.round(fastingProgress * 100) / 100,
-      fastingGoal,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fastingGoal: (preferences as any).fastingGoal || fastingGoal,
       workoutsThisWeek,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       workoutGoal: (preferences as any).workoutGoal,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       currentWeight: (latestMetric as any)?.weight || 0,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      weightGoal: (preferences as any).weightGoal,
       weightChange: Math.round(weightChange * 10) / 10,
     };
 

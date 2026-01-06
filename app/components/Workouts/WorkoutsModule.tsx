@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Activity, Trash2, TrendingUp, Loader2, X, Search } from 'lucide-react';
+import { DatePicker } from '../DatePicker';
 
 interface Workout {
   id: string;
@@ -39,13 +40,13 @@ export const WorkoutsModule: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Exercise[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const suggestionsRef = useRef<HTMLDivElement>(null);
   
   const [formState, setFormState] = useState({
     name: '',
     sets: '',
     reps: '',
-    bodyPart: '',
   });
 
   useEffect(() => {
@@ -64,7 +65,7 @@ export const WorkoutsModule: React.FC = () => {
       fetchWorkouts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
+  }, [currentUser, selectedDate]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -79,7 +80,7 @@ export const WorkoutsModule: React.FC = () => {
   }, []);
 
   const searchExercises = async (query: string) => {
-    if (query.trim().length < 2 && !formState.bodyPart) {
+    if (query.trim().length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
@@ -87,15 +88,7 @@ export const WorkoutsModule: React.FC = () => {
 
     try {
       setSearching(true);
-      let url = '/api/exercises/search?';
-      
-      if (query.trim().length >= 2) {
-        url += `q=${encodeURIComponent(query)}`;
-      }
-      
-      if (formState.bodyPart) {
-        url += `${query.trim().length >= 2 ? '&' : ''}bodyPart=${encodeURIComponent(formState.bodyPart)}`;
-      }
+      const url = `/api/exercises/search?q=${encodeURIComponent(query)}`;
       
       const response = await fetch(url);
       const data = await response.json();
@@ -110,7 +103,7 @@ export const WorkoutsModule: React.FC = () => {
   };
 
   const handleSearchClick = () => {
-    if (formState.name.trim().length >= 2 || formState.bodyPart) {
+    if (formState.name.trim().length >= 2) {
       searchExercises(formState.name);
     }
   };
@@ -134,7 +127,7 @@ export const WorkoutsModule: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    setFormState({ name: '', sets: '', reps: '', bodyPart: '' });
+    setFormState({ name: '', sets: '', reps: '' });
     setSelectedExercise(null);
     setSuggestions([]);
     setShowSuggestions(false);
@@ -144,9 +137,9 @@ export const WorkoutsModule: React.FC = () => {
     if (!currentUser?.email) return;
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+      const dateStr = selectedDate.toISOString().split('T')[0];
       const response = await fetch(
-        `/api/workouts?userId=${encodeURIComponent(currentUser.email)}&date=${today}`
+        `/api/workouts?userId=${encodeURIComponent(currentUser.email)}&date=${dateStr}`
       );
       const data = await response.json();
       setWorkouts(data || []);
@@ -168,13 +161,19 @@ export const WorkoutsModule: React.FC = () => {
       return;
     }
 
-    if (!currentUser) {
+    if (!currentUser) { 
       alert('User not authenticated');
       return;
     }
 
     try {
       setLoading(true);
+      // Create timestamp for the selected date at current time
+      const workoutTimestamp = new Date(selectedDate);
+      workoutTimestamp.setHours(new Date().getHours());
+      workoutTimestamp.setMinutes(new Date().getMinutes());
+      workoutTimestamp.setSeconds(new Date().getSeconds());
+
       const workoutData = {
         userId: currentUser.email,
         name: formState.name,
@@ -184,6 +183,7 @@ export const WorkoutsModule: React.FC = () => {
         bodyPart: selectedExercise?.bodyPart || null,
         target: selectedExercise?.target || null,
         equipment: selectedExercise?.equipment || null,
+        timestamp: workoutTimestamp.toISOString(),
       };
 
       const response = await fetch('/api/workouts', {
@@ -198,7 +198,7 @@ export const WorkoutsModule: React.FC = () => {
 
       const newWorkout = await response.json();
       setWorkouts([newWorkout, ...workouts]);
-      setFormState({ name: '', sets: '', reps: '', bodyPart: '' });
+      setFormState({ name: '', sets: '', reps: '' });
       setSelectedExercise(null);
       setSuggestions([]);
     } catch (error) {
@@ -217,7 +217,7 @@ export const WorkoutsModule: React.FC = () => {
       const response = await fetch(`/api/workouts/${id}`, {
         method: 'DELETE',
       });
-
+      
       if (!response.ok) {
         throw new Error('Failed to delete workout');
       }
@@ -243,36 +243,12 @@ export const WorkoutsModule: React.FC = () => {
         </div>
 
         <form onSubmit={handleAddWorkout} className="space-y-4">
-          {/* Body Part Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Filter by Body Part (Optional)
-            </label>
-            <select
-              value={formState.bodyPart}
-              onChange={(e) => setFormState({ ...formState, bodyPart: e.target.value })}
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
-            >
-              <option value="">All Body Parts</option>
-              <option value="back">Back</option>
-              <option value="cardio">Cardio</option>
-              <option value="chest">Chest</option>
-              <option value="lower arms">Lower Arms</option>
-              <option value="lower legs">Lower Legs</option>
-              <option value="neck">Neck</option>
-              <option value="shoulders">Shoulders</option>
-              <option value="upper arms">Upper Arms</option>
-              <option value="upper legs">Upper Legs</option>
-              <option value="waist">Waist</option>
-            </select>
-          </div>
-
           {/* Exercise Name with Search Button */}
           <div className="relative" ref={suggestionsRef}>
-            <label className="block text-sm font-medium text-gray-300 mb-2 flex items-center justify-between">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
               <span>Exercise Name</span>
-              <div className="flex gap-2">
-                {(formState.name || formState.bodyPart) && (
+              <div className="flex gap-2 mt-1">
+                {formState.name && (
                   <button
                     type="button"
                     onClick={handleClearFilters}
@@ -285,7 +261,7 @@ export const WorkoutsModule: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleSearchClick}
-                  disabled={searching || (formState.name.trim().length < 2 && !formState.bodyPart)}
+                  disabled={searching || formState.name.trim().length < 2}
                   className="text-xs px-3 py-1 bg-purple-600/20 hover:bg-purple-600/40 text-purple-300 rounded-md flex items-center gap-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {searching ? (
@@ -400,11 +376,20 @@ export const WorkoutsModule: React.FC = () => {
         </form>
       </div>
 
-      {/* Today's Workouts Card */}
+      {/* Workouts Card */}
       <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
         <div className="flex items-center gap-3 mb-6">
           <TrendingUp className="w-6 h-6 text-yellow-400" />
-          <h3 className="text-2xl font-semibold text-white">Today&apos;s Workouts</h3>
+          <h3 className="text-2xl font-semibold text-white">
+            {selectedDate.toDateString() === new Date().toDateString()
+              ? "Today's Workouts"
+              : `Workouts - ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+          </h3>
+        </div>
+
+        {/* Date Picker */}
+        <div className="mb-6">
+          <DatePicker onDateSelect={(date) => setSelectedDate(date)} />
         </div>
 
         {loading && workouts.length === 0 ? (

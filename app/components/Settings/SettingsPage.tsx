@@ -28,6 +28,12 @@ export const SettingsPage: React.FC = () => {
     heightUnit: 'in',
     activityLevel: '1.55',
   });
+  const [goals, setGoals] = useState({
+    calorieGoal: '',
+    fastingGoal: '',
+    workoutGoal: '',
+    weightGoal: '',
+  });
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -55,6 +61,12 @@ export const SettingsPage: React.FC = () => {
           heightUnit: data.heightUnit || 'in',
           activityLevel: data.activityLevel?.toString() || '1.55',
         }));
+        setGoals({
+          calorieGoal: data.calorieGoal?.toString() || '',
+          fastingGoal: data.fastingGoal?.toString() || '',
+          workoutGoal: data.workoutGoal?.toString() || '',
+          weightGoal: data.weightGoal?.toString() || '',
+        });
       }
     } catch (error) {
       console.error('Error fetching preferences:', error);
@@ -63,6 +75,11 @@ export const SettingsPage: React.FC = () => {
 
   const handlePreferenceChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setPreferences({ ...preferences, [e.target.name]: e.target.value });
+    setMessage({ text: '', type: 'success' });
+  };
+
+  const handleGoalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setGoals({ ...goals, [e.target.name]: e.target.value });
     setMessage({ text: '', type: 'success' });
   };
 
@@ -87,6 +104,10 @@ export const SettingsPage: React.FC = () => {
           height: preferences.height ? parseFloat(preferences.height) : null,
           heightUnit: preferences.heightUnit,
           activityLevel: preferences.activityLevel ? parseFloat(preferences.activityLevel) : null,
+          calorieGoal: goals.calorieGoal ? parseInt(goals.calorieGoal) : null,
+          fastingGoal: goals.fastingGoal ? parseInt(goals.fastingGoal) : null,
+          workoutGoal: goals.workoutGoal ? parseInt(goals.workoutGoal) : null,
+          weightGoal: goals.weightGoal ? parseFloat(goals.weightGoal) : null,
         }),
       });
 
@@ -218,6 +239,77 @@ export const SettingsPage: React.FC = () => {
               <option value="1.725">Active (exercise 6-7 days/week)</option>
               <option value="1.9">Very Active (intense exercise daily)</option>
             </select>
+          </div>
+
+          {/* Divider */}
+          <div className="border-t border-white/10 pt-6">
+            <h3 className="text-lg font-semibold text-white mb-4">Goals</h3>
+            <p className="text-sm text-gray-300 mb-4">
+              Set your daily and weekly goals to track your progress
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Calorie Goal */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Daily Calorie Goal
+                </label>
+                <input
+                  type="number"
+                  name="calorieGoal"
+                  value={goals.calorieGoal}
+                  onChange={handleGoalChange}
+                  placeholder="e.g., 2000"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                />
+              </div>
+
+              {/* Fasting Goal */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Fasting Goal (hours)
+                </label>
+                <input
+                  type="number"
+                  name="fastingGoal"
+                  value={goals.fastingGoal}
+                  onChange={handleGoalChange}
+                  placeholder="e.g., 16"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                />
+              </div>
+
+              {/* Workout Goal */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Weekly Workout Goal
+                </label>
+                <input
+                  type="number"
+                  name="workoutGoal"
+                  value={goals.workoutGoal}
+                  onChange={handleGoalChange}
+                  placeholder="e.g., 5"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                />
+              </div>
+
+              {/* Weight Goal */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Weight Goal (lbs)
+                </label>
+                <input
+                  type="number"
+                  name="weightGoal"
+                  value={goals.weightGoal}
+                  onChange={handleGoalChange}
+                  step="0.1"
+                  placeholder="e.g., 175"
+                  className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                />
+              </div>
+            </div>
           </div>
 
           {/* Message */}

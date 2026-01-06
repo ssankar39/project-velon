@@ -4,10 +4,18 @@ import { ObjectId } from 'mongodb';
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const { id } = params;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Workout ID is required' },
+        { status: 400 }
+      );
+    }
 
     const workoutsCollection = await getCollection('Workout');
     const result = await workoutsCollection.deleteOne({

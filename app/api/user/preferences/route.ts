@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, weightGoal, calorieGoal, workoutGoal, age, gender, height, heightUnit, activityLevel } = body;
+    const { userId, weightGoal, calorieGoal, workoutGoal, fastingGoal, age, gender, height, heightUnit, activityLevel } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -69,6 +69,7 @@ export async function POST(req: NextRequest) {
     if (weightGoal !== undefined) updateData.weightGoal = parseFloat(weightGoal);
     if (calorieGoal !== undefined) updateData.calorieGoal = parseInt(calorieGoal);
     if (workoutGoal !== undefined) updateData.workoutGoal = parseInt(workoutGoal);
+    if (fastingGoal !== undefined) updateData.fastingGoal = parseInt(fastingGoal);
     if (age !== undefined) updateData.age = parseInt(age);
     if (gender !== undefined) updateData.gender = gender;
     if (height !== undefined) updateData.height = parseFloat(height);

@@ -17,6 +17,7 @@ export interface UserStats {
   workoutsThisWeek: number;
   workoutGoal: number;
   currentWeight: number;
+  weightGoal?: number;
   weightChange: number;
 }
 

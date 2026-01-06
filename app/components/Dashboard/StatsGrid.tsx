@@ -56,12 +56,12 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
   if (fastingProgress < 1) {
     // Less than 1 hour - show in minutes
     const minutes = Math.round(fastingProgress * 60);
-    fastingDisplay = `${minutes} min / ${fastingGoal}h`;
+    fastingDisplay = `${minutes} min`;
   } else {
     // 1 hour or more - show in hours and minutes
     const hours = Math.floor(fastingProgress);
     const minutes = Math.round((fastingProgress % 1) * 60);
-    fastingDisplay = `${hours}h ${minutes}m / ${fastingGoal}h`;
+    fastingDisplay = `${hours}h ${minutes}m`;
   }
 
   return (
@@ -76,6 +76,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
       <StatCard
         label="Fast Progress"
         value={fastingDisplay}
+        goal={`${fastingGoal}h`}
         icon={<Timer className="w-6 h-6 text-white" />}
         iconBg="bg-gradient-to-br from-yellow-500 to-yellow-600"
       />
@@ -90,6 +91,7 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
         label="Current Weight"
         value={stats.currentWeight ?? 0}
         unit="lbs"
+        goal={stats.weightGoal ? `${stats.weightGoal} lbs` : undefined}
         change={`${stats.weightChange ?? 0} lbs this month`}
         icon={<TrendingDown className="w-6 h-6 text-white" />}
         iconBg="bg-gradient-to-br from-yellow-400 to-orange-500"

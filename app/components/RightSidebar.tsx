@@ -191,16 +191,16 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
       <div className="mb-8">
         <h3 className="text-lg font-bold text-white mb-4">Active Sessions</h3>
         <div className="space-y-3">
-          {activeWorkout && (
+          {activeFasting && (
             <LiveActivityCard
-              type="workout"
-              name={activeWorkout.name}
-              duration={`${activeWorkout.duration} min`}
-              totalTime={`${activeWorkout.caloriesBurned || 0} kcal`}
-              status="completed"
+              type="fasting"
+              name={`${activeFasting.protocol}h Fast`}
+              duration={calculateFastingProgress().duration}
+              totalTime={calculateFastingProgress().totalTime}
+              status="active"
             />
           )}
-          {!activeWorkout && (
+          {!activeFasting && (
             <div className="text-center py-8 glass-light rounded-xl">
               <p className="text-gray-400 text-sm">No active sessions</p>
               <p className="text-xs text-gray-500 mt-1">Start tracking to see live data</p>
@@ -241,10 +241,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
                 </div>
 
                 <div className="flex items-center gap-4 mt-3 pt-3 border-t border-white/10">
-                  <div className="flex items-center gap-1">
-                    <Clock size={14} className="text-yellow-400" />
-                    <span className="text-xs text-gray-300 font-semibold">{workout.duration} min</span>
-                  </div>
                   {workout.caloriesBurned > 0 && (
                     <div className="flex items-center gap-1">
                       <Flame size={14} className="text-orange-400" />
@@ -273,14 +269,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
           <div className="flex justify-between items-center">
             <span className="text-xs text-gray-400">Calories Burned</span>
             <span className="text-sm font-bold text-orange-400">{totalCaloriesBurned} kcal</span>
-          </div>
-          <div className="flex justify-between items-center">
-            <span className="text-xs text-gray-400">Avg Duration</span>
-            <span className="text-sm font-bold text-yellow-400">
-              {totalWorkouts > 0 
-                ? Math.round(recentWorkouts.reduce((sum, w) => sum + w.duration, 0) / totalWorkouts)
-                : 0} min
-            </span>
           </div>
         </div>
       </div>

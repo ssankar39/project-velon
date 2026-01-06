@@ -4,7 +4,7 @@ import { getCollection } from '@/lib/mongodb';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, name, sets, reps, exerciseId, bodyPart, target, equipment } = body;
+    const { userId, name, sets, reps, exerciseId, bodyPart, target, equipment, timestamp } = body;
 
     if (!userId || !name) {
       return NextResponse.json(
@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
     const totalReps = (sets || 0) * (reps || 0);
     const estimatedCalories = Math.round(totalReps * 0.5);
 
+    // Use provided timestamp or current time
+    const workoutTimestamp = timestamp ? new Date(timestamp) : new Date();
+
     const result = await workoutsCollection.insertOne({
       userId: user._id.toString(),
       name,
@@ -40,7 +43,7 @@ export async function POST(req: NextRequest) {
       target: target || null,
       equipment: equipment || null,
       caloriesBurned: estimatedCalories,
-      timestamp: new Date(),
+      timestamp: workoutTimestamp,
       createdAt: new Date(),
       updatedAt: new Date(),
     });
@@ -86,10 +89,10 @@ export async function GET(req: NextRequest) {
     let query: Record<string, unknown> = { userId: user._id.toString() };
 
     if (date) {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      // Parse the date string and create dates in local timezone
+      const [year, month, day] = date.split('-').map(Number);
+      const startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      const endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
 
       query.timestamp = {
         $gte: startOfDay,
@@ -99,7 +102,16 @@ export async function GET(req: NextRequest) {
 
     const workouts = await workoutsCollection.find(query).sort({ timestamp: -1 }).toArray();
 
-    return NextResponse.json(workouts, { status: 200 });
+    // Convert MongoDB _id to string id for frontend
+    const formattedWorkouts = workouts.map((workout: any) => {
+      const { _id, ...rest } = workout;
+      return {
+        ...rest,
+        id: _id.toString(),
+      };
+    });
+
+    return NextResponse.json(formattedWorkouts, { status: 200 });
   } catch (error) {
     console.error('Error fetching workouts:', error);
     return NextResponse.json(
