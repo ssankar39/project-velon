@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const updateData: any = {
+    const updateData: Record<string, string | number | Date> = {
       userId: user._id.toString(),
       updatedAt: new Date(),
     };
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     if (heightUnit !== undefined) updateData.heightUnit = heightUnit;
     if (activityLevel !== undefined) updateData.activityLevel = parseFloat(activityLevel);
 
-    const result = await preferencesCollection.updateOne(
+    await preferencesCollection.updateOne(
       { userId: user._id.toString() },
       { 
         $set: updateData,

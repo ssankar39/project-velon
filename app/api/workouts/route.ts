@@ -103,7 +103,7 @@ export async function GET(req: NextRequest) {
     const workouts = await workoutsCollection.find(query).sort({ timestamp: -1 }).toArray();
 
     // Convert MongoDB _id to string id for frontend
-    const formattedWorkouts = workouts.map((workout: any) => {
+    const formattedWorkouts = workouts.map((workout: { _id: { toString: () => string }; [key: string]: unknown }) => {
       const { _id, ...rest } = workout;
       return {
         ...rest,

@@ -317,7 +317,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
             <button
               type="submit"
               disabled={loading}
-              className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full px-6 py-3 bg-linear-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold rounded-lg hover:shadow-lg hover:shadow-purple-500/50 hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
@@ -341,7 +341,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
             <div>
               <div className="glass-light rounded-lg h-4 overflow-hidden mb-4">
                 <div
-                  className="h-full bg-gradient-to-r from-purple-600 to-purple-700 rounded-lg transition-all"
+                  className="h-full bg-linear-to-r from-purple-600 to-purple-700 rounded-lg transition-all"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Mail, Lock, Loader2 } from 'lucide-react';
+import { Mail, Lock, Loader2, Zap } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LoginPage() {
@@ -60,11 +60,11 @@ export default function LoginPage() {
         className="glass rounded-2xl shadow-2xl p-8 w-full max-w-sm animate-fadeIn"
       >
         <div className="mb-8 text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-2xl">FT</span>
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-linear-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg">
+            <Zap className="w-10 h-10 text-white" fill="currentColor" />
           </div>
           <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
-          <p className="text-gray-400 mt-2">Login to FitTrack Pro</p>
+          <p className="text-gray-400 mt-2">Login to Velon</p>
         </div>
 
         {message.text && (
@@ -116,7 +116,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full mt-6 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
+          className="w-full mt-6 bg-linear-to-r from-purple-600 to-purple-700 text-white font-semibold py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition flex items-center justify-center gap-2 disabled:opacity-50 shadow-lg"
         >
           {loading ? (
             <>

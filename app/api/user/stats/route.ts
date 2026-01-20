@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -86,9 +88,9 @@ export async function GET(req: NextRequest) {
 
     // Calculate weight change
     let weightChange = 0;
-    if (latestMetric && (latestMetric as any).weight) {
-      if (previousMetric && (previousMetric as any).weight) {
-        weightChange = (latestMetric as any).weight - (previousMetric as any).weight;
+    if (latestMetric && 'weight' in latestMetric && typeof latestMetric.weight === 'number') {
+      if (previousMetric && 'weight' in previousMetric && typeof previousMetric.weight === 'number') {
+        weightChange = latestMetric.weight - previousMetric.weight;
       }
     }
 

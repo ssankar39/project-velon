@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams;
@@ -19,7 +21,7 @@ export async function GET(req: NextRequest) {
     } else if (bodyPart && query) {
       // Search with both query and body part filter
       apiUrl = `https://www.exercisedb.dev/api/v1/exercises/filter?search=${encodeURIComponent(query)}&bodyParts=${encodeURIComponent(bodyPart)}&limit=20`;
-    } else {
+    } else if (query) {
       // Search by query only
       apiUrl = `https://www.exercisedb.dev/api/v1/exercises/search?q=${encodeURIComponent(query)}&limit=20`;
     }
@@ -43,7 +45,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Transform the data to match our interface
-    const suggestions = result.data.map((exercise: any) => ({
+    const suggestions = result.data.map((exercise: { exerciseId: string; name: string; bodyParts?: string[]; targetMuscles?: string[]; equipments?: string[]; gifUrl: string }) => ({
       id: exercise.exerciseId,
       name: exercise.name,
       bodyPart: exercise.bodyParts?.[0] || 'general',

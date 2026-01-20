@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { Dumbbell, Utensils, Timer, TrendingUp } from 'lucide-react';
 
 interface LiveActivityCardProps {
@@ -60,9 +61,9 @@ export const LiveActivityCard: React.FC<LiveActivityCardProps> = ({
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
           {image ? (
-            <img src={image} alt={name} className="w-12 h-12 rounded-full object-cover" />
+            <Image src={image} alt={name} width={48} height={48} className="rounded-full object-cover" />
           ) : (
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-linear-to-br from-purple-500 to-pink-500 flex items-center justify-center">
               {getIcon()}
             </div>
           )}

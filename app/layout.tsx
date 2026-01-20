@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FitTrack Pro - Fitness Dashboard",
+  title: "Velon - Fitness Dashboard",
   description: "Your personal fitness tracking dashboard with calorie tracking, fasting timer, and health calculators",
 };
 

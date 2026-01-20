@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Dumbbell, Flame, TrendingUp } from 'lucide-react';
+import { Dumbbell, Flame, TrendingUp } from 'lucide-react';
 import { LiveActivityCard } from './LiveActivityCard';
 
 interface Workout {
@@ -22,13 +22,6 @@ interface FastingSession {
   completedAt?: string;
 }
 
-interface Metric {
-  id: string;
-  weight?: number;
-  bodyFat?: number;
-  bmi?: number;
-  timestamp: string;
-}
 
 interface AuthUser {
   id: string;
@@ -43,9 +36,7 @@ interface RightSidebarProps {
 export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
   const [activeFasting, setActiveFasting] = useState<FastingSession | null>(null);
-  const [latestMetric, setLatestMetric] = useState<Metric | null>(null);
 
   useEffect(() => {
     fetchRecentWorkouts();
@@ -62,26 +53,12 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
       const userEmail = userId || user.email;
       
       // Fetch today's workouts (most recent one)
-      const today = new Date().toISOString().split('T')[0];
-      const workoutsRes = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}&date=${today}`);
-      const workouts: Workout[] = await workoutsRes.json();
-      if (workouts.length > 0) {
-        setActiveWorkout(workouts[0]);
-      }
-
       // Fetch active fasting session
       const fastingRes = await fetch(`/api/fasting?userId=${encodeURIComponent(userEmail)}`);
       const fastingSessions: FastingSession[] = await fastingRes.json();
       const active = fastingSessions.find(s => s.isActive);
       if (active) {
         setActiveFasting(active);
-      }
-
-      // Fetch latest metric
-      const metricsRes = await fetch(`/api/metrics?userId=${encodeURIComponent(userEmail)}`);
-      const metrics: Metric[] = await metricsRes.json();
-      if (metrics.length > 0) {
-        setLatestMetric(metrics[0]);
       }
     } catch (error) {
       console.error('Error fetching active data:', error);
@@ -163,33 +140,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
     };
   };
 
-  const formatMetricValue = () => {
-    if (!latestMetric) return 'No data';
-    if (latestMetric.weight) return `${latestMetric.weight} lbs`;
-    if (latestMetric.bodyFat) return `${latestMetric.bodyFat}% BF`;
-    if (latestMetric.bmi) return `BMI ${latestMetric.bmi}`;
-    return 'Recorded';
-  };
-
-  const getTimeSinceMetric = () => {
-    if (!latestMetric) return '';
-    const now = new Date();
-    const metricTime = new Date(latestMetric.timestamp);
-    const diffHours = Math.floor((now.getTime() - metricTime.getTime()) / 1000 / 60 / 60);
-    
-    if (diffHours < 1) return 'Just now';
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return `${Math.floor(diffHours / 24)}d ago`;
-  };
-
   const totalCaloriesBurned = recentWorkouts.reduce((sum, w) => sum + (w.caloriesBurned || 0), 0);
   const totalWorkouts = recentWorkouts.length;
 
   return (
     <aside className="fixed right-0 top-20 h-[calc(100vh-5rem)] w-80 glass p-6 overflow-y-auto animate-slideInRight">
-      {/* Active Sessions */}
+      {/* Fasting Sessions */}
       <div className="mb-8">
-        <h3 className="text-lg font-bold text-white mb-4">Active Sessions</h3>
+        <h3 className="text-lg font-bold text-white mb-4">Fasting Sessions</h3>
         <div className="space-y-3">
           {activeFasting && (
             <LiveActivityCard
@@ -202,8 +160,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
           )}
           {!activeFasting && (
             <div className="text-center py-8 glass-light rounded-xl">
-              <p className="text-gray-400 text-sm">No active sessions</p>
-              <p className="text-xs text-gray-500 mt-1">Start tracking to see live data</p>
+              <p className="text-gray-400 text-sm">No active fasting session</p>
+              <p className="text-xs text-gray-500 mt-1">Start a session to see live data</p>
             </div>
           )}
         </div>
@@ -228,7 +186,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
                 className="glass-light rounded-xl p-4 border-l-4 border-purple-500 animate-fadeIn"
               >
                 <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${getIntensityColor(workout.intensity)} flex items-center justify-center`}>
+                  <div className={`w-10 h-10 rounded-full bg-linear-to-br ${getIntensityColor(workout.intensity)} flex items-center justify-center`}>
                     <Dumbbell size={16} className="text-white" />
                   </div>
                   <div className="flex-1">

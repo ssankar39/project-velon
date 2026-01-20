@@ -12,6 +12,7 @@ import WorkoutsModule from '@/app/components/Workouts/WorkoutsModule';
 import MetricsModule from '@/app/components/Metrics/MetricsModule';
 import { ProfilePage } from '@/app/components/Profile/ProfilePage';
 import { SettingsPage } from '@/app/components/Settings/SettingsPage';
+import LandingPage from '@/app/components/LandingPage';
 import { UserStats, Meal, FastingState } from '@/app/types';
 
 interface AuthUser {
@@ -47,19 +48,17 @@ export default function Home() {
       try {
         const user = JSON.parse(storedUser) as AuthUser;
         setCurrentUser(user);
-        setLoading(false);
       } catch (e) {
         console.error('Failed to parse stored user:', e);
-        window.location.href = '/login';
+        localStorage.removeItem('user');
       }
-    } else {
-      window.location.href = '/login';
     }
+    setLoading(false);
   }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('user');
-    window.location.href = '/login';
+    window.location.href = '/landing';
   };
 
   const handleMealsUpdate = (updatedMeals: Meal[]) => {
@@ -93,6 +92,11 @@ export default function Home() {
     );
   }
 
+  // If not logged in, show landing page
+  if (!currentUser) {
+    return <LandingPage />;
+  }
+
   // Calculate active goals vs total
   const activeGoals = [
     userStats.caloriesConsumed < userStats.caloriesGoal,
@@ -106,7 +110,6 @@ export default function Home() {
       <GlassSidebar
         activeModule={activeModule}
         onModuleChange={setActiveModule}
-        onLogout={handleLogout}
       />
 
       {/* Modern Top Bar */}
@@ -116,6 +119,8 @@ export default function Home() {
         activeUsers={activeGoals}
         totalUsers={3}
         onBreak={3 - activeGoals}
+        onModuleChange={setActiveModule}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}

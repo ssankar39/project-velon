@@ -35,7 +35,7 @@ const StatCard: React.FC<StatCardProps> = ({
           {goal && <p className="text-sm text-gray-300 mt-2">Goal: <span className="text-purple-400 font-semibold">{goal}</span></p>}
           {change && <p className="text-sm font-medium text-yellow-400 mt-2">{change}</p>}
         </div>
-        <div className={`${iconBg} p-4 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg`}>
+        <div className={`${iconBg} p-4 rounded-xl flex items-center justify-center shrink-0 shadow-lg`}>
           {icon}
         </div>
       </div>
@@ -71,30 +71,29 @@ export const StatsGrid: React.FC<StatsGridProps> = ({ stats }) => {
         value={(stats.caloriesConsumed ?? 0).toLocaleString()}
         goal={(stats.caloriesGoal ?? 0).toLocaleString()}
         icon={<Utensils className="w-6 h-6 text-white" />}
-        iconBg="bg-gradient-to-br from-purple-500 to-purple-700"
+        iconBg="bg-linear-to-br from-purple-500 to-purple-700"
       />
       <StatCard
         label="Fast Progress"
         value={fastingDisplay}
         goal={`${fastingGoal}h`}
         icon={<Timer className="w-6 h-6 text-white" />}
-        iconBg="bg-gradient-to-br from-yellow-500 to-yellow-600"
+        iconBg="bg-linear-to-br from-yellow-500 to-yellow-600"
       />
       <StatCard
-        label="Workouts This Week"
+        label="Workouts"
         value={stats.workoutsThisWeek ?? 0}
-        goal={stats.workoutGoal ?? 0}
+        goal={stats.workoutGoal ?? 5}
         icon={<Activity className="w-6 h-6 text-white" />}
-        iconBg="bg-gradient-to-br from-purple-600 to-pink-600"
+        iconBg="bg-linear-to-br from-purple-600 to-pink-600"
       />
       <StatCard
         label="Current Weight"
         value={stats.currentWeight ?? 0}
         unit="lbs"
         goal={stats.weightGoal ? `${stats.weightGoal} lbs` : undefined}
-        change={`${stats.weightChange ?? 0} lbs this month`}
         icon={<TrendingDown className="w-6 h-6 text-white" />}
-        iconBg="bg-gradient-to-br from-yellow-400 to-orange-500"
+        iconBg="bg-linear-to-br from-yellow-400 to-orange-500"
       />
     </div>
   );
