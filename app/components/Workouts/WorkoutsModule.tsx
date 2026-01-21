@@ -9,6 +9,8 @@ interface Workout {
   name: string;
   sets?: number;
   reps?: number;
+  weight?: number;
+  weightUnit?: 'lbs' | 'kg';
   exerciseId?: string;
   bodyPart?: string;
   target?: string;
@@ -47,6 +49,8 @@ export const WorkoutsModule: React.FC = () => {
     name: '',
     sets: '',
     reps: '',
+    weight: '',
+    weightUnit: 'lbs' as 'lbs' | 'kg',
   });
 
   useEffect(() => {
@@ -127,7 +131,7 @@ export const WorkoutsModule: React.FC = () => {
   };
 
   const handleClearFilters = () => {
-    setFormState({ name: '', sets: '', reps: '' });
+    setFormState({ name: '', sets: '', reps: '', weight: '', weightUnit: 'lbs' });
     setSelectedExercise(null);
     setSuggestions([]);
     setShowSuggestions(false);
@@ -155,6 +159,7 @@ export const WorkoutsModule: React.FC = () => {
 
     const sets = parseInt(formState.sets);
     const reps = parseInt(formState.reps);
+    const weight = parseFloat(formState.weight);
 
     if (!formState.name.trim()) {
       alert('Please enter a workout name');
@@ -179,6 +184,8 @@ export const WorkoutsModule: React.FC = () => {
         name: formState.name,
         sets: isNaN(sets) ? null : sets,
         reps: isNaN(reps) ? null : reps,
+        weight: isNaN(weight) ? null : weight,
+        weightUnit: formState.weightUnit,
         exerciseId: selectedExercise?.id || null,
         bodyPart: selectedExercise?.bodyPart || null,
         target: selectedExercise?.target || null,
@@ -198,7 +205,7 @@ export const WorkoutsModule: React.FC = () => {
 
       const newWorkout = await response.json();
       setWorkouts([newWorkout, ...workouts]);
-      setFormState({ name: '', sets: '', reps: '' });
+      setFormState({ name: '', sets: '', reps: '', weight: '', weightUnit: 'lbs' });
       setSelectedExercise(null);
       setSuggestions([]);
     } catch (error) {
@@ -234,12 +241,12 @@ export const WorkoutsModule: React.FC = () => {
   const totalCaloriesBurned = workouts.reduce((sum, w) => sum + w.caloriesBurned, 0);
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto p-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 max-w-4xl mx-auto p-3 md:p-4">
       {/* Add Workout Card */}
-      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
-        <div className="flex items-center gap-3 mb-6">
-          <Activity className="w-6 h-6 text-purple-400" />
-          <h3 className="text-2xl font-semibold text-white">Log Workout</h3>
+      <div className="glass rounded-2xl p-4 md:p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
+        <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+          <Activity className="w-5 h-5 md:w-6 md:h-6 text-purple-400" />
+          <h3 className="text-xl md:text-2xl font-semibold text-white">Log Workout</h3>
         </div>
 
         <form onSubmit={handleAddWorkout} className="space-y-4">
@@ -286,7 +293,7 @@ export const WorkoutsModule: React.FC = () => {
                   }
                 }}
                 required
-                className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
               />
               {selectedExercise && (
                 <button
@@ -333,8 +340,8 @@ export const WorkoutsModule: React.FC = () => {
             )}
           </div>
 
-          {/* Sets and Reps */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* Sets, Reps, and Weight */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Sets</label>
               <input
@@ -343,7 +350,7 @@ export const WorkoutsModule: React.FC = () => {
                 min="0"
                 value={formState.sets}
                 onChange={(e) => setFormState({ ...formState, sets: e.target.value })}
-                className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
               />
             </div>
             <div>
@@ -354,8 +361,32 @@ export const WorkoutsModule: React.FC = () => {
                 min="0"
                 value={formState.reps}
                 onChange={(e) => setFormState({ ...formState, reps: e.target.value })}
-                className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
               />
+            </div>
+          </div>
+
+          {/* Weight */}
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">Weight (Optional)</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                placeholder="e.g., 35"
+                min="0"
+                step="0.5"
+                value={formState.weight}
+                onChange={(e) => setFormState({ ...formState, weight: e.target.value })}
+                className="flex-1 px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              />
+              <select
+                value={formState.weightUnit}
+                onChange={(e) => setFormState({ ...formState, weightUnit: e.target.value as 'lbs' | 'kg' })}
+                className="px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10 min-w-[80px]"
+              >
+                <option value="lbs">lbs</option>
+                <option value="kg">kg</option>
+              </select>
             </div>
           </div>
 
@@ -377,10 +408,10 @@ export const WorkoutsModule: React.FC = () => {
       </div>
 
       {/* Workouts Card */}
-      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
-        <div className="flex items-center gap-3 mb-6">
-          <TrendingUp className="w-6 h-6 text-yellow-400" />
-          <h3 className="text-2xl font-semibold text-white">
+      <div className="glass rounded-2xl p-4 md:p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
+        <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
+          <TrendingUp className="w-5 h-5 md:w-6 md:h-6 text-yellow-400" />
+          <h3 className="text-lg md:text-2xl font-semibold text-white break-words">
             {selectedDate.toDateString() === new Date().toDateString()
               ? "Today's Workouts"
               : `Workouts - ${selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
@@ -404,11 +435,11 @@ export const WorkoutsModule: React.FC = () => {
             {workouts.map((workout) => (
               <div
                 key={workout.id}
-                className="flex items-center justify-between p-3 glass-light border-l-4 border-purple-500 rounded-lg hover:scale-[1.02] transition-transform"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 glass-light border-l-4 border-purple-500 rounded-lg hover:scale-[1.02] transition-transform"
               >
-                <div className="flex-1">
-                  <p className="font-semibold text-white capitalize">{workout.name}</p>
-                  <div className="flex gap-2 mt-1 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-white capitalize break-words">{workout.name}</p>
+                  <div className="flex gap-2 mt-1 flex-wrap items-center">
                     {workout.bodyPart && (
                       <span className="text-xs px-2 py-1 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 capitalize">
                         {workout.bodyPart}
@@ -416,19 +447,24 @@ export const WorkoutsModule: React.FC = () => {
                     )}
                     {workout.sets && workout.reps && (
                       <span className="text-sm text-gray-400">
-                        {workout.sets} sets × {workout.reps} reps
+                        {workout.sets}×{workout.reps}
+                        {workout.weight && (
+                          <span className="text-purple-300 font-semibold ml-1">
+                            @ {workout.weight}{workout.weightUnit || 'lbs'}
+                          </span>
+                        )}
                       </span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <p className="text-lg font-semibold text-yellow-400">{workout.caloriesBurned} kcal</p>
+                <div className="flex items-center gap-2 md:gap-3 sm:flex-shrink-0">
+                  <p className="text-base md:text-lg font-semibold text-yellow-400 whitespace-nowrap">{workout.caloriesBurned} kcal</p>
                   <button
                     onClick={() => handleDeleteWorkout(workout.id)}
                     disabled={loading}
-                    className="text-red-400 hover:text-red-300 hover:scale-125 transition-transform disabled:opacity-50"
+                    className="text-red-400 hover:text-red-300 hover:scale-125 transition-transform disabled:opacity-50 p-1"
                   >
-                    <Trash2 size={20} />
+                    <Trash2 size={18} className="md:w-5 md:h-5" />
                   </button>
                 </div>
               </div>
@@ -436,9 +472,9 @@ export const WorkoutsModule: React.FC = () => {
           </div>
         )}
 
-        <div className="flex items-center justify-between p-4 glass-light rounded-lg border-t-2 border-purple-500/30">
-          <p className="font-semibold text-white">Total Burned:</p>
-          <p className="text-2xl font-bold text-yellow-400">{totalCaloriesBurned.toLocaleString()} kcal</p>
+        <div className="flex items-center justify-between p-3 md:p-4 glass-light rounded-lg border-t-2 border-purple-500/30">
+          <p className="font-semibold text-white text-sm md:text-base">Total Burned:</p>
+          <p className="text-xl md:text-2xl font-bold text-yellow-400">{totalCaloriesBurned.toLocaleString()} kcal</p>
         </div>
       </div>
     </div>

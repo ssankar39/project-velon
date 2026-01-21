@@ -152,7 +152,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
               value={formState.foodName}
               onChange={(e) => setFormState({ ...formState, foodName: e.target.value })}
               required
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -163,7 +163,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
               value={formState.calories}
               onChange={(e) => setFormState({ ...formState, calories: e.target.value })}
               required
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -173,7 +173,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
               onChange={(e) =>
                 setFormState({ ...formState, mealType: e.target.value as MealType })
               }
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
             >
               <option value="breakfast">Breakfast</option>
               <option value="lunch">Lunch</option>

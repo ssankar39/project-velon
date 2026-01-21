@@ -28,6 +28,7 @@ export default function Home() {
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userStats, setUserStats] = useState<UserStats>({
     caloriesConsumed: 1847,
     caloriesGoal: 2000,
@@ -109,7 +110,12 @@ export default function Home() {
       {/* Glassmorphic Sidebar */}
       <GlassSidebar
         activeModule={activeModule}
-        onModuleChange={setActiveModule}
+        onModuleChange={(module) => {
+          setActiveModule(module);
+          setMobileMenuOpen(false);
+        }}
+        mobileMenuOpen={mobileMenuOpen}
+        onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
 
       {/* Modern Top Bar */}
@@ -121,10 +127,11 @@ export default function Home() {
         onBreak={3 - activeGoals}
         onModuleChange={setActiveModule}
         onLogout={handleLogout}
+        onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
 
-      {/* Main Content Area */}
-      <main className="ml-20 mr-80 mt-20 min-h-screen p-8">
+      {/* Main Content Area - Responsive margins */}
+      <main className="ml-0 md:ml-20 lg:mr-80 mt-20 min-h-screen p-4 md:p-6 lg:p-8">
         {activeModule === 'dashboard' && <DashboardModule key={refreshKey} stats={userStats} />}
         {activeModule === 'calories' && <CalorieTracker onMealsUpdate={handleMealsUpdate} />}
         {activeModule === 'calculator' && <CalculatorModule />}
@@ -135,8 +142,10 @@ export default function Home() {
         {activeModule === 'settings' && <SettingsPage />}
       </main>
 
-      {/* Right Sidebar */}
-      <RightSidebar key={refreshKey} />
+      {/* Right Sidebar - Hidden on mobile/tablet */}
+      <div className="hidden lg:block">
+        <RightSidebar key={refreshKey} />
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { User, ChevronDown, UserCircle, Settings, LogOut } from 'lucide-react';
+import { User, ChevronDown, UserCircle, Settings, LogOut, Menu } from 'lucide-react';
 import Link from 'next/link';
 
 interface ModernTopBarProps {
@@ -12,6 +12,7 @@ interface ModernTopBarProps {
   onBreak?: number;
   onModuleChange?: (module: 'profile' | 'settings') => void;
   onLogout?: () => void;
+  onMobileMenuToggle?: () => void;
 }
 
 export const ModernTopBar: React.FC<ModernTopBarProps> = ({
@@ -19,26 +20,35 @@ export const ModernTopBar: React.FC<ModernTopBarProps> = ({
   userEmail,
   onModuleChange,
   onLogout,
+  onMobileMenuToggle,
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const displayName = userName?.split(' ')[0] || userEmail?.split('@')[0] || 'User';
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-20 glass z-40 flex items-center justify-between px-8 animate-slideInLeft">
-      {/* Left: Brand Logo */}
+    <header className="fixed top-0 left-0 right-0 h-20 glass z-40 flex items-center justify-between px-4 md:px-8 animate-slideInLeft">
+      {/* Left: Hamburger (mobile) + Brand Logo */}
       <div className="flex items-center gap-3">
+        {/* Hamburger Menu Button - Mobile Only */}
+        <button
+          onClick={onMobileMenuToggle}
+          className="md:hidden w-10 h-10 rounded-lg glass-light flex items-center justify-center hover:bg-purple-600/30 transition-all"
+        >
+          <Menu size={20} className="text-white" />
+        </button>
+
         <Link href="/landing" className="w-10 h-10 rounded-lg bg-linear-to-br from-purple-500 to-purple-700 flex items-center justify-center shadow-lg hover:scale-110 transition-transform">
           <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M13 2L3 14h8l-2 8 10-12h-8l2-8z" />
           </svg>
         </Link>
-        <h1 className="text-xl font-bold text-white">Velon</h1>
+        <h1 className="hidden sm:block text-xl font-bold text-white">Velon</h1>
       </div>
 
       {/* Right: Admin Profile */}
       <div className="flex items-center gap-4 relative">
-        <div className="text-right">
+        <div className="hidden md:block text-right">
           <p className="text-m font-semibold text-white">Hello, {displayName}</p>
         </div>
 

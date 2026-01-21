@@ -210,7 +210,7 @@ export const MetricsModule: React.FC = () => {
               placeholder="e.g., 165.5"
               value={formState.weight}
               onChange={(e) => setFormState({ ...formState, weight: e.target.value })}
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -222,7 +222,7 @@ export const MetricsModule: React.FC = () => {
               placeholder="e.g., 18.5"
               value={formState.bodyFat}
               onChange={(e) => setFormState({ ...formState, bodyFat: e.target.value })}
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -234,7 +234,7 @@ export const MetricsModule: React.FC = () => {
               placeholder="e.g., 24.8"
               value={formState.bmi}
               onChange={(e) => setFormState({ ...formState, bmi: e.target.value })}
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -245,7 +245,7 @@ export const MetricsModule: React.FC = () => {
               placeholder="e.g., 1650"
               value={formState.bmr}
               onChange={(e) => setFormState({ ...formState, bmr: e.target.value })}
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 
@@ -266,7 +266,7 @@ export const MetricsModule: React.FC = () => {
               placeholder="e.g., 2400"
               value={formState.tdee}
               onChange={(e) => setFormState({ ...formState, tdee: e.target.value })}
-              className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
             />
           </div>
 

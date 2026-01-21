@@ -177,3 +177,22 @@ input:-webkit-autofill:active {
   background: rgba(139, 92, 246, 0.7);
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Improve touch targets on mobile */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Better scrolling on mobile */
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent text size adjustment on orientation change */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+}
+

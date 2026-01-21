@@ -124,7 +124,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
                 placeholder="Enter weight goal (lbs)"
                 value={goalInput}
                 onChange={(e) => setGoalInput(e.target.value)}
-                className="flex-1 px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                className="flex-1 px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
               />
               <button
                 onClick={saveWeightGoal}

@@ -271,7 +271,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
                       protocol: e.target.value as '16' | '18' | '20' | '24' | 'custom',
                     })
                   }
-                  className="w-full px-4 py-2 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
+                  className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
                 >
                   <option value="16">16:8 (16 hours fast)</option>
                   <option value="18">18:6 (18 hours fast)</option>
