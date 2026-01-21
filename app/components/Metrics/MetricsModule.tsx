@@ -193,7 +193,7 @@ export const MetricsModule: React.FC = () => {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl mx-auto p-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto p-4 sm:p-6">
       {/* Log Metrics Card */}
       <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
         <div className="flex items-center gap-3 mb-6">

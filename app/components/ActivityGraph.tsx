@@ -214,6 +214,9 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   };
 
   const getX = (index: number) => {
+    if (data.length === 1) {
+      return graphWidth / 2; // Center single point
+    }
     return (index / (data.length - 1)) * (graphWidth - padding * 2) + padding;
   };
 
@@ -236,26 +239,26 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   const actualAreaPath = `${actualPath} L ${getX(data.length - 1)} ${graphHeight - padding / 2} L ${padding} ${graphHeight - padding / 2} Z`;
 
   return (
-    <div className="glass rounded-2xl p-6 animate-fadeIn">
-      <div className="mb-6">
-        <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
-        <div className="flex gap-6">
+    <div className="glass rounded-2xl p-4 md:p-6 animate-fadeIn">
+      <div className="mb-4 md:mb-6">
+        <h3 className="text-lg md:text-xl font-bold text-white mb-2">{title}</h3>
+        <div className="flex flex-wrap gap-3 md:gap-6 text-xs md:text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-purple-500" />
-            <span className="text-sm text-gray-400">Actual Performance</span>
+            <span className="text-gray-400">Actual Performance</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 border-b-2 border-dashed border-yellow-400" />
-            <span className="text-sm text-gray-400">Target Goals</span>
+            <span className="text-gray-400">Target Goals</span>
           </div>
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative w-full">
         <svg
-          width={graphWidth}
-          height={graphHeight}
-          className="overflow-visible"
+          viewBox={`0 0 ${graphWidth} ${graphHeight}`}
+          className="w-full h-auto max-h-[300px]"
+          preserveAspectRatio="xMinYMid meet"
           onMouseLeave={() => setHoveredIndex(null)}
         >
           {/* Grid lines */}

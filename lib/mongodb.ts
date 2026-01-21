@@ -1,9 +1,9 @@
 import { MongoClient, Db } from 'mongodb';
 
-const uri = process.env.DATABASE_URL;
+const uri = process.env.MONGODB_URI;
 
 if (!uri) {
-  throw new Error('DATABASE_URL environment variable is not set');
+  throw new Error('MONGODB_URI environment variable is not set');
 }
 
 let cachedDb: Db | null = null;

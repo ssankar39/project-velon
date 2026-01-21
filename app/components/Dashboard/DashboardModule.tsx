@@ -107,7 +107,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
   }
 
   return (
-    <div className="animate-fadeIn px-8">
+    <div className="animate-fadeIn p-4 sm:p-6 max-w-7xl mx-auto">
       {/* Date Picker */}
       <DatePicker />
 
