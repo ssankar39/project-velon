@@ -63,7 +63,7 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-24 md:pt-32 pb-12 md:pb-20 px-4 md:px-6">
+      <section className="pt-24 md:pt-32 pb-6 md:pb-10 px-4 md:px-6">
         <div className="max-w-7xl mx-auto text-center">
           
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-4 md:mb-6 leading-tight">
@@ -76,43 +76,17 @@ export default function LandingPage() {
             </span>
           </h1>
           
-          <p className="text-base md:text-xl text-white/70 mb-8 md:mb-12 max-w-2xl mx-auto leading-relaxed px-4">
+          <p className="text-base md:text-xl text-white/70 mb-4 md:mb-6 max-w-2xl mx-auto leading-relaxed px-4">
             The all-in-one fitness platform that helps you track calories, monitor fasting, 
             log workouts, and achieve your health goals with precision and ease.
           </p>
-
-          {/* Hero Image/Stats Preview */}
-          <div className="mt-12 md:mt-20 relative">
-            <div className="glass rounded-2xl md:rounded-3xl border border-white/10 p-4 md:p-8 max-w-4xl mx-auto backdrop-blur-xl">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-                <div className="text-center p-6 rounded-2xl bg-linear-to-br from-purple-500/10 to-transparent border border-purple-500/20">
-                  <div className="text-4xl font-bold text-purple-400 mb-2">1K+</div>
-                  <div className="text-white/60">Active Users</div>
-                </div>
-                <div className="text-center p-6 rounded-2xl bg-linear-to-br from-violet-500/10 to-transparent border border-violet-500/20">
-                  <div className="text-4xl font-bold text-violet-400 mb-2">20K+</div>
-                  <div className="text-white/60">Workouts Logged</div>
-                </div>
-                <div className="text-center p-6 rounded-2xl bg-linear-to-br from-purple-500/10 to-transparent border border-purple-500/20">
-                  <div className="text-4xl font-bold text-purple-400 mb-2">4.9★</div>
-                  <div className="text-white/60">User Rating</div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
 
       {/* Features Section */}
-      <section className="py-12 md:py-20 px-4 md:px-6">
+      <section className="pt-0 pb-12 md:pb-20 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-12 md:mb-16">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-              Everything You Need in One Place
-            </h2>
-            <p className="text-lg md:text-xl text-white/70 max-w-2xl mx-auto px-4">
-              Powerful tools designed to help you reach your fitness goals faster
-            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
