@@ -38,9 +38,9 @@ export const GlassSidebar: React.FC<GlassSidebarProps> = ({
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-1/4 h-1/2 w-20 glass z-50 flex-col items-center justify-center py-6 rounded-r-3xl animate-slideInLeft">
+      <aside className="hidden md:flex fixed left-0 top-1/2 -translate-y-1/2 h-auto max-h-[70vh] w-20 glass z-50 flex-col items-center justify-center py-6 rounded-r-3xl animate-slideInLeft">
       {/* Navigation Icons */}
-      <nav className="flex flex-col gap-4 w-full px-3">
+      <nav className="flex flex-col gap-3 w-full px-3">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeModule === item.id;

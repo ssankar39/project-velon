@@ -144,7 +144,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
   const totalWorkouts = recentWorkouts.length;
 
   return (
-    <aside className="fixed right-0 top-20 h-[calc(100vh-5rem)] w-80 glass p-6 overflow-y-auto animate-slideInRight">
+    <aside className="fixed right-0 top-20 h-[calc(100vh-5rem)] w-80 xl:w-96 glass p-6 overflow-y-auto animate-slideInRight">
       {/* Fasting Sessions */}
       <div className="mb-8">
         <h3 className="text-lg font-bold text-white mb-4">Fasting Sessions</h3>

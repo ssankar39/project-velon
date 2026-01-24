@@ -131,7 +131,7 @@ export default function Home() {
       />
 
       {/* Main Content Area - Responsive margins */}
-      <main className="ml-0 md:ml-20 lg:mr-80 mt-20 min-h-screen p-4 md:p-6 lg:p-8">
+      <main className="ml-0 md:ml-24 lg:mr-80 xl:mr-96 mt-20 min-h-screen p-4 md:p-6 lg:p-8 transition-all duration-300">
         {activeModule === 'dashboard' && <DashboardModule key={refreshKey} stats={userStats} />}
         {activeModule === 'calories' && <CalorieTracker onMealsUpdate={handleMealsUpdate} />}
         {activeModule === 'calculator' && <CalculatorModule />}
