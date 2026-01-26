@@ -308,13 +308,13 @@ export const WorkoutsModule: React.FC = () => {
 
             {/* Suggestions Dropdown */}
             {showSuggestions && suggestions.length > 0 && (
-              <div className="absolute z-10 w-full mt-1 glass-light rounded-lg border border-white/10 max-h-60 overflow-y-auto shadow-xl">
+              <div className="absolute z-10 w-full mt-1 max-h-60 overflow-y-auto space-y-2 rounded-lg p-2 shadow-xl glass-light">
                 {suggestions.map((exercise) => (
                   <button
                     key={exercise.id}
                     type="button"
                     onClick={() => handleSelectExercise(exercise)}
-                    className="w-full text-left px-4 py-3 hover:bg-purple-600/20 transition-colors border-b border-white/5 last:border-b-0"
+                    className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors border border-white/5"
                   >
                     <p className="font-semibold text-white capitalize">{exercise.name}</p>
                     <div className="flex gap-2 mt-1 text-xs text-gray-400">

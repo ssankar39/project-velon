@@ -145,10 +145,11 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
 
   return (
     <aside className="fixed right-0 top-20 h-[calc(100vh-5rem)] w-80 xl:w-96 glass p-6 overflow-y-auto animate-slideInRight">
+
       {/* Fasting Sessions */}
       <div className="mb-8">
         <h3 className="text-lg font-bold text-white mb-4">Fasting Sessions</h3>
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
           {activeFasting && (
             <LiveActivityCard
               type="fasting"
@@ -183,7 +184,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
             recentWorkouts.map((workout) => (
               <div
                 key={workout.id}
-                className="glass-light rounded-xl p-4 border-l-4 border-purple-500 animate-fadeIn"
+                className="w-full text-left p-4 rounded-lg hover:bg-white/10 transition-colors border border-white/5 animate-fadeIn"
               >
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`w-10 h-10 rounded-full bg-linear-to-br ${getIntensityColor(workout.intensity)} flex items-center justify-center`}>

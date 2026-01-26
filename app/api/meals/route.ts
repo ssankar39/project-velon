@@ -4,7 +4,7 @@ import { getCollection } from '@/lib/mongodb';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, name, calories, type } = body;
+    const { userId, name, calories, type, protein, carbs, fat } = body;
 
     if (!userId || !name || !calories || !type) {
       return NextResponse.json(
@@ -30,6 +30,9 @@ export async function POST(req: NextRequest) {
       name,
       calories: parseInt(calories),
       type,
+      protein: protein ? parseFloat(protein) : undefined,
+      carbs: carbs ? parseFloat(carbs) : undefined,
+      fat: fat ? parseFloat(fat) : undefined,
       timestamp: new Date(),
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -86,6 +89,9 @@ export async function GET(req: NextRequest) {
       name: meal.name,
       calories: meal.calories,
       type: meal.type,
+      protein: meal.protein || 0,
+      carbs: meal.carbs || 0,
+      fat: meal.fat || 0,
     }));
 
     return NextResponse.json(transformedMeals, { status: 200 });

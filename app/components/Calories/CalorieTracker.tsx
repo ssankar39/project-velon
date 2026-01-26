@@ -2,10 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Meal, MealType } from '@/app/types';
-import { Plus, Trash2, Calendar, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Calendar, Loader2, Search, X } from 'lucide-react';
+import { DatePicker } from '../DatePicker';
 
 interface CalorieTrackerProps {
   onMealsUpdate: (meals: Meal[]) => void;
+  selectedDate?: Date;
+  onDateChange?: (date: Date) => void;
 }
 
 interface CurrentUser {
@@ -14,17 +17,57 @@ interface CurrentUser {
   name?: string;
 }
 
+interface UserPreferences {
+  age?: number;
+  gender?: 'male' | 'female';
+  height?: number;
+  heightUnit?: 'in' | 'cm';
+  activityLevel?: number;
+  weightGoal?: number;
+}
+
+interface FoodSearchResult {
+  fdcId: number;
+  description: string;
+  brandName?: string;
+  calories: number;
+  servingSize?: number;
+  servingSizeUnit?: string;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  portions?: Array<{
+    amount: number;
+    gramWeight: number;
+    description?: string;
+    unit?: string;
+    calories: number;
+  }>;
+}
+
 export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   onMealsUpdate,
+  selectedDate,
+  onDateChange,
 }) => {
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(false);
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [currentWeight, setCurrentWeight] = useState<number>(0);
   const [formState, setFormState] = useState({
     foodName: '',
     calories: '',
+    servingSize: '',
     mealType: 'breakfast' as MealType,
   });
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<FoodSearchResult[]>([]);
+  const [searching, setSearching] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [selectedFood, setSelectedFood] = useState<FoodSearchResult | null>(null);
+  const [selectedServingAmount, setSelectedServingAmount] = useState(100);
+  const [selectedServingUnit, setSelectedServingUnit] = useState('g');
 
   // Get current user from localStorage
   useEffect(() => {
@@ -38,31 +81,397 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
     }
   }, []);
 
+  // Load user preferences and current weight
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserPreferences();
+      fetchCurrentWeight();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
+
+  // Load user preferences and current weight
+  useEffect(() => {
+    if (currentUser) {
+      fetchUserPreferences();
+      fetchCurrentWeight();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser]);
+
   // Load today's meals from database
   useEffect(() => {
     if (currentUser) {
       fetchTodaysMeals();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
+  }, [currentUser, selectedDate]);
+
+  // Update parent component when meals change
+  useEffect(() => {
+    onMealsUpdate(meals);
+  }, [meals, onMealsUpdate]);
+
+  const fetchUserPreferences = async () => {
+    if (!currentUser?.email) return;
+    try {
+      const response = await fetch(
+        `/api/user/preferences?userId=${encodeURIComponent(currentUser.email)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setUserPreferences(data);
+      }
+    } catch (error) {
+      console.error('Error fetching user preferences:', error);
+    }
+  };
+
+  const fetchCurrentWeight = async () => {
+    if (!currentUser?.email) return;
+    try {
+      const response = await fetch(
+        `/api/user/stats?userId=${encodeURIComponent(currentUser.email)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        setCurrentWeight(data.currentWeight || 0);
+      }
+    } catch (error) {
+      console.error('Error fetching current weight:', error);
+    }
+  };
+
+  // Calculate macro goals based on user data
+  const calculateMacroGoals = () => {
+    if (!userPreferences || !currentWeight) {
+      // Default values if no user data available
+      return { proteinGoal: 150, carbsGoal: 200, fatGoal: 65, calorieGoal: 2000 };
+    }
+
+    const { age, gender, height, heightUnit, activityLevel } = userPreferences;
+
+    if (!age || !gender || !height || !heightUnit || !activityLevel) {
+      return { proteinGoal: 150, carbsGoal: 200, fatGoal: 65, calorieGoal: 2000 };
+    }
+
+    // Weight is stored in lbs, convert to kg
+    const weightKg = currentWeight * 0.453592;
+
+    // Convert height to cm
+    let heightCm = height;
+    if (heightUnit === 'in') {
+      heightCm = height * 2.54;
+    }
+
+    // Calculate BMR using Mifflin-St Jeor Equation
+    let bmr: number;
+    if (gender === 'male') {
+      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+    } else {
+      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+    }
+
+    // Calculate TDEE
+    const tdee = Math.round(bmr * activityLevel);
+
+    // Calculate macros using a realistic split for general fitness (50/25/25)
+    // Carbs: 50% of calories, 1g = 4 calories
+    const carbsCalories = tdee * 0.50;
+    const carbsGoal = Math.round(carbsCalories / 4);
+
+    // Protein: 25% of calories, 1g = 4 calories
+    const proteinCalories = tdee * 0.25;
+    const proteinGoal = Math.round(proteinCalories / 4);
+
+    // Fat: 25% of calories, 1g = 9 calories
+    const fatCalories = tdee * 0.25;
+    const fatGoal = Math.round(fatCalories / 9);
+
+    console.log('Macro Calculation:', {
+      weight: currentWeight,
+      weightKg,
+      height,
+      heightCm,
+      age,
+      gender,
+      activityLevel,
+      bmr,
+      tdee,
+      carbsCalories,
+      proteinCalories,
+      fatCalories,
+      proteinGoal,
+      carbsGoal,
+      fatGoal
+    });
+
+    return { proteinGoal, carbsGoal, fatGoal, calorieGoal: tdee };
+  };
 
   const fetchTodaysMeals = async () => {
     if (!currentUser?.email) return;
     try {
       setLoading(true);
-      const today = new Date().toISOString().split('T')[0];
+      const dateToFetch = selectedDate || new Date();
+      const dateStr = dateToFetch.toISOString().split('T')[0];
       const response = await fetch(
-        `/api/meals?userId=${encodeURIComponent(currentUser.email)}&date=${today}`
+        `/api/meals?userId=${encodeURIComponent(currentUser.email)}&date=${dateStr}`
       );
       const data = await response.json();
-      setMeals(data || []);
-      onMealsUpdate(data || []);
+      // Ensure numeric macro fields (API may return strings or different keys from older entries)
+      // using component-scoped toNumber
+
+      const normalized = (data || []).map((m: unknown) => {
+        const mealRaw = m as Record<string, unknown>;
+        // Try several possible locations/names for macros used in older documents
+        const nutrients = mealRaw['nutrients'] as Record<string, unknown> | undefined;
+        const macros = mealRaw['macros'] as Record<string, unknown> | undefined;
+
+        const caloriesVal = toNumber(
+          mealRaw['calories'] ?? mealRaw['kcal'] ?? nutrients?.['calories'] ?? nutrients?.['energy_kcal']
+        );
+
+        const proteinVal = toNumber(
+          mealRaw['protein'] ?? mealRaw['protein_g'] ?? nutrients?.['protein'] ?? nutrients?.['protein_g'] ?? macros?.['protein']
+        );
+
+        const carbsVal = toNumber(
+          mealRaw['carbs'] ?? mealRaw['carbs_g'] ?? nutrients?.['carbohydrates'] ?? nutrients?.['carbs'] ?? macros?.['carbs']
+        );
+
+        const fatVal = toNumber(
+          mealRaw['fat'] ?? mealRaw['fat_g'] ?? nutrients?.['fat'] ?? nutrients?.['lipids'] ?? macros?.['fat']
+        );
+
+        return {
+          id: String(mealRaw['id'] ?? mealRaw['_id'] ?? ''),
+          name: String(mealRaw['name'] ?? mealRaw['title'] ?? ''),
+          calories: caloriesVal,
+          type: (String(mealRaw['type'] ?? 'breakfast') as MealType),
+          protein: proteinVal,
+          carbs: carbsVal,
+          fat: fatVal,
+        } as Meal;
+      });
+      // Enrich meals with macros via food search API when missing
+      const enriched = await enrichMealsWithMacros(normalized);
+      setMeals(enriched);
+      onMealsUpdate(enriched);
     } catch (error) {
       console.error('Error fetching meals:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Enrich meals that are missing macros by searching the food API
+  const enrichMealsWithMacros = async (mealsList: Meal[]): Promise<Meal[]> => {
+    if (!mealsList || mealsList.length === 0) return mealsList;
+
+    const results = await Promise.all(
+      mealsList.map(async (meal) => {
+        try {
+            const getNum = (keyCandidates: (string | number | symbol)[]) => {
+            for (const k of keyCandidates) {
+              const v = (meal as unknown as Record<string, unknown>)[k as string];
+              if (typeof v === 'number') return v as number;
+              if (typeof v === 'string' && v.trim() !== '') return Number(v as string);
+            }
+            return 0;
+          };
+
+          const hasMacros = getNum(['protein']) > 0 || getNum(['carbs']) > 0 || getNum(['fat']) > 0;
+          if (hasMacros) return meal;
+
+          const name = meal.name as string | undefined;
+          if (!name) return meal;
+
+          const q = encodeURIComponent(name.split('-').pop()?.trim() || name);
+          const resp = await fetch(`/api/food/search?query=${q}`);
+          if (!resp.ok) return meal;
+          const body = await resp.json();
+          const first = body.foods && body.foods[0];
+          if (!first) return meal;
+
+          const sourceCalories = toNumber((first as Record<string, unknown>).calories);
+          let factor = 0;
+          const mealCalories = toNumber(meal.calories);
+          if (sourceCalories > 0 && mealCalories > 0) {
+            factor = mealCalories / sourceCalories;
+          }
+
+          const protein = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).protein) * factor) : toNumber((first as Record<string, unknown>).protein);
+          const carbs = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).carbs) * factor) : toNumber((first as Record<string, unknown>).carbs);
+          const fat = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).fat) * factor) : toNumber((first as Record<string, unknown>).fat);
+
+          return {
+            ...meal,
+            protein: toNumber((meal as unknown as Record<string, unknown>).protein) || protein,
+            carbs: toNumber((meal as unknown as Record<string, unknown>).carbs) || carbs,
+            fat: toNumber((meal as unknown as Record<string, unknown>).fat) || fat,
+          } as Meal;
+        } catch {
+          return meal;
+        }
+      })
+    );
+
+    return results as Meal[];
+  };
+
+  const searchFoods = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      setSearching(true);
+      const response = await fetch(
+        `/api/food/search?query=${encodeURIComponent(searchQuery)}`
+      );
+      
+      if (!response.ok) {
+        throw new Error('Failed to search foods');
+      }
+
+      const data = await response.json();
+      setSearchResults(data.foods || []);
+    } catch (error) {
+      console.error('Error searching foods:', error);
+      alert('Failed to search foods. Please try again.');
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      searchFoods();
+    }
+  };
+
+  const selectFood = (food: FoodSearchResult) => {
+    setSelectedFood(food);
+    
+    // Check if food has USDA portions
+    if (food.portions && food.portions.length > 0) {
+      const firstPortion = food.portions[0];
+      setSelectedServingAmount(firstPortion.amount);
+      setSelectedServingUnit(firstPortion.unit || 'serving');
+    } else {
+      const baseAmount = food.servingSize || 100;
+      const baseUnit = food.servingSizeUnit || 'g';
+      setSelectedServingAmount(baseAmount);
+      setSelectedServingUnit(baseUnit);
+    }
+    
+    setFormState({
+      ...formState,
+      foodName: food.brandName 
+        ? `${food.brandName} - ${food.description}`
+        : food.description,
+      calories: food.calories.toString(),
+      servingSize: food.portions && food.portions.length > 0
+        ? food.portions[0].description || `${food.portions[0].amount} ${food.portions[0].unit}`
+        : `${food.servingSize || 100}${food.servingSizeUnit || 'g'}`,
+    });
+    setShowSearch(false);
+    setSearchQuery('');
+    setSearchResults([]);
+  };
+
+  const handleServingAmountChange = (amount: string) => {
+    const numAmount = parseFloat(amount) || 0;
+    setSelectedServingAmount(numAmount);
+    
+    // Auto-convert if not using grams
+    if (selectedServingUnit !== 'g' && selectedFood) {
+      setTimeout(() => handleConvertMeasurement(), 0);
+    }
+  };
+
+  const handleServingUnitChange = (unit: string) => {
+    setSelectedServingUnit(unit);
+    
+    // Auto-convert if not using grams
+    if (unit !== 'g' && selectedFood) {
+      setTimeout(() => handleConvertMeasurement(), 0);
+    }
+  };
+
+  const handleConvertMeasurement = () => {
+    if (!selectedFood) return;
+    
+    // Convert unit to grams for calculation
+    const gramsAmount = convertToGrams(selectedServingAmount, selectedServingUnit);
+    
+    // Calculate calories - USDA nutrients are per 100g
+    const newCalories = Math.round((selectedFood.calories * gramsAmount) / 100);
+    
+    // Calculate macros
+    const protein = Math.round(((selectedFood.protein || 0) * gramsAmount) / 100);
+    const carbs = Math.round(((selectedFood.carbs || 0) * gramsAmount) / 100);
+    const fat = Math.round(((selectedFood.fat || 0) * gramsAmount) / 100);
+    
+    setFormState({
+      ...formState,
+      calories: newCalories.toString(),
+      servingSize: `${selectedServingAmount}${selectedServingUnit}`,
+    });
+    
+    // Update selected food with calculated macros
+    setSelectedFood({
+      ...selectedFood,
+      protein,
+      carbs,
+      fat,
+    });
+  };
+
+  const handleMeasurementKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleConvertMeasurement();
+    }
+  };
+
+  // Unit conversion to grams
+  const convertToGrams = (amount: number, unit: string): number => {
+    const conversions: Record<string, number> = {
+      'g': 1,
+      'kg': 1000,
+      'mg': 0.001,
+      'oz': 28.3495,
+      'lb': 453.592,
+      'ml': 1, // Assumes density of water (1g/ml)
+      'L': 1000,
+      'cup': 240, // Standard US cup
+      'tbsp': 15,
+      'tsp': 5,
+    };
+    
+    return amount * (conversions[unit] || 1);
+  };
+
+  const handlePortionChange = (portionIndex: number) => {
+    if (!selectedFood || !selectedFood.portions) return;
+    
+    const portion = selectedFood.portions[portionIndex];
+    setSelectedServingAmount(portion.amount);
+    setSelectedServingUnit(portion.unit || 'serving');
+    
+    // Use pre-calculated calories from API
+    setFormState({
+      ...formState,
+      calories: portion.calories.toString(),
+      servingSize: portion.description || `${portion.amount} ${portion.unit}`,
+    });
+  };
+
+
 
   const handleAddFood = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,6 +497,9 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
           name: formState.foodName,
           calories,
           type: formState.mealType,
+          protein: selectedFood?.protein || 0,
+          carbs: selectedFood?.carbs || 0,
+          fat: selectedFood?.fat || 0,
         }),
       });
 
@@ -96,11 +508,23 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       }
 
       const newMeal = await response.json();
-      const updatedMeals = [...meals, newMeal];
+      // Normalize macros to numbers in case API returns strings
+      const normalizedNewMeal = {
+        ...newMeal,
+        calories: Number(newMeal.calories) || 0,
+        protein: Number(newMeal.protein) || 0,
+        carbs: Number(newMeal.carbs) || 0,
+        fat: Number(newMeal.fat) || 0,
+      };
+      const updatedMeals = [...meals, normalizedNewMeal];
       setMeals(updatedMeals);
       onMealsUpdate(updatedMeals);
 
-      setFormState({ foodName: '', calories: '', mealType: 'breakfast' });
+      setFormState({ foodName: '', calories: '', servingSize: '', mealType: 'breakfast' });
+      setSelectedFood(null);
+      setSelectedServingAmount(100);
+      setSelectedServingUnit('g');
+      
     } catch (error) {
       console.error('Error adding meal:', error);
       alert('Failed to add meal');
@@ -133,7 +557,28 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
     }
   };
 
-  const totalCalories = meals.reduce((sum, meal) => sum + meal.calories, 0);
+  const toNumber = (v: unknown) => {
+    if (typeof v === 'number') return v;
+    if (typeof v === 'string' && v.trim() !== '') return Number(v);
+    return 0;
+  };
+
+  const totalCalories = meals.reduce((sum, meal) => sum + toNumber(meal.calories), 0);
+  const totalProtein = meals.reduce((sum, meal) => sum + toNumber(meal.protein), 0);
+  const totalCarbs = meals.reduce((sum, meal) => sum + toNumber(meal.carbs), 0);
+  const totalFat = meals.reduce((sum, meal) => sum + toNumber(meal.fat), 0);
+
+  // Calculate macro goals dynamically based on user data
+  const { proteinGoal, carbsGoal, fatGoal } = calculateMacroGoals();
+
+  // Helper to coerce unknown values to numbers
+
+  // Calculate totals for the selected date (already handled by meals state)
+  // The meals state is updated by fetchTodaysMeals, which uses selectedDate
+  // So totalCalories, totalProtein, totalCarbs, totalFat already reflect the selected date
+
+  // No change needed for the calculation, but update the Macros Card title to reflect the date
+  const formattedDate = selectedDate ? new Date(selectedDate).toLocaleDateString() : new Date().toLocaleDateString();
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 max-w-4xl mx-auto p-4 sm:p-6">
@@ -145,16 +590,234 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
         </div>
 
         <form onSubmit={handleAddFood} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              placeholder="Food name"
-              value={formState.foodName}
-              onChange={(e) => setFormState({ ...formState, foodName: e.target.value })}
-              required
-              className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
-            />
+          {/* Food Search Toggle */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setShowSearch(!showSearch)}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                showSearch
+                  ? 'bg-purple-600 text-white'
+                  : 'glass-light text-gray-300 hover:text-white'
+              }`}
+            >
+              <Search className="w-4 h-4 inline mr-2" />
+              Search
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowSearch(false)}
+              className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                !showSearch
+                  ? 'bg-purple-600 text-white'
+                  : 'glass-light text-gray-300 hover:text-white'
+              }`}
+            >
+              Manual Entry
+            </button>
           </div>
+
+          {/* Food Search */}
+          {showSearch && (
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search for foods (press Enter)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyPress={handleSearchKeyPress}
+                    className="w-full pl-10 pr-10 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery('');
+                        setSearchResults([]);
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={searchFoods}
+                  disabled={searching || !searchQuery.trim()}
+                  className="px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {searching ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-5 h-5" />}
+                </button>
+              </div>
+
+              {/* Search Results */}
+              {searching && (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                </div>
+              )}
+
+              {!searching && searchResults.length > 0 && (
+                <div className="max-h-64 overflow-y-auto space-y-2 glass-light rounded-lg p-2">
+                  {searchResults.map((food) => (
+                    <button
+                      key={food.fdcId}
+                      type="button"
+                      onClick={() => selectFood(food)}
+                      className="w-full text-left p-3 rounded-lg hover:bg-white/10 transition-colors border border-white/5"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <p className="text-white font-medium text-sm">
+                            {food.brandName && (
+                              <span className="text-purple-400">{food.brandName} - </span>
+                            )}
+                            {food.description}
+                          </p>
+                          {food.servingSize && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Serving: {food.servingSize}{food.servingSizeUnit}
+                            </p>
+                          )}
+                          <div className="flex gap-3 mt-1 text-xs text-gray-400">
+                            {food.protein && food.protein > 0 && <span>P: {Math.round(food.protein)}g</span>}
+                            {food.carbs && food.carbs > 0 && <span>C: {Math.round(food.carbs)}g</span>}
+                            {food.fat && food.fat > 0 && <span>F: {Math.round(food.fat)}g</span>}
+                          </div>
+                        </div>
+                        <div className="text-purple-400 font-bold ml-3">
+                          {food.calories} cal
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!searching && searchQuery && searchResults.length === 0 && (
+                <p className="text-center text-gray-400 py-4">
+                  No foods found. Try a different search term.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Selected Food Display */}
+          {selectedFood && (
+            <div className="glass-light rounded-lg p-4 border border-purple-500/50">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-white font-medium">
+                  {selectedFood.brandName && (
+                    <span className="text-purple-400">{selectedFood.brandName} - </span>
+                  )}
+                  {selectedFood.description}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                      setSelectedFood(null);
+                      setSelectedServingAmount(100);
+                      setSelectedServingUnit('g');
+                      setFormState({ ...formState, foodName: '', calories: '', servingSize: '' });
+                    }}
+                  className="text-red-400 hover:text-red-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-xs text-gray-400">
+                Base: {selectedFood.calories} cal per {selectedFood.servingSize || 100}{selectedFood.servingSizeUnit || 'g'}
+              </p>
+            </div>
+          )}
+
+          {/* Manual Entry Fields */}
+          {!selectedFood && (
+            <div>
+              <input
+                type="text"
+                placeholder="Food name"
+                value={formState.foodName}
+                onChange={(e) => setFormState({ ...formState, foodName: e.target.value })}
+                required
+                className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              />
+            </div>
+          )}
+
+          {/* Serving Size Input for Selected Food */}
+          {selectedFood && (
+            <div>
+              <label className="text-sm text-gray-300 mb-1 block">Serving Size</label>
+              
+              {/* Show USDA portions dropdown if available */}
+              {selectedFood.portions && selectedFood.portions.length > 0 ? (
+                <div className="space-y-2">
+                  <select
+                    onChange={(e) => handlePortionChange(parseInt(e.target.value))}
+                    className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
+                  >
+                    {selectedFood.portions.map((portion, index) => (
+                      <option key={index} value={index}>
+                        {portion.description} ({portion.gramWeight}g - {portion.calories} cal)
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400">
+                    USDA household portions available
+                  </p>
+                </div>
+              ) : (
+                // Fallback to manual input
+                <div>
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      placeholder="Amount"
+                      value={selectedServingAmount}
+                      onChange={(e) => handleServingAmountChange(e.target.value)}
+                      onKeyPress={handleMeasurementKeyPress}
+                      min="0"
+                      step="0.1"
+                      className="flex-1 px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+                    />
+                    <select
+                      value={selectedServingUnit}
+                      onChange={(e) => handleServingUnitChange(e.target.value)}
+                      className="w-28 px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
+                    >
+                      <option value="g">g</option>
+                      <option value="kg">kg</option>
+                      <option value="ml">ml</option>
+                      <option value="L">L</option>
+                      <option value="oz">oz</option>
+                      <option value="lb">lb</option>
+                      <option value="cup">cup</option>
+                      <option value="tbsp">tbsp</option>
+                      <option value="tsp">tsp</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Manual Serving Size for Non-Selected Food */}
+          {!selectedFood && (
+            <div>
+              <input
+                type="text"
+                placeholder="Serving size (e.g., 100g, 1 cup, 2 slices)"
+                value={formState.servingSize}
+                onChange={(e) => setFormState({ ...formState, servingSize: e.target.value })}
+                className="w-full px-3 py-2.5 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white placeholder-gray-400 border border-white/10"
+              />
+            </div>
+          )}
 
           <div>
             <input
@@ -201,10 +864,13 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
 
       {/* Today's Meals Card */}
       <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn">
-        <div className="flex items-center gap-3 mb-6">
-          <Calendar className="w-6 h-6 text-yellow-400" />
-          <h3 className="text-2xl font-semibold text-white">Today&apos;s Meals</h3>
-        </div>
+          <div className="flex items-center gap-3 mb-4">
+            <Calendar className="w-6 h-6 text-yellow-400" />
+            <h3 className="text-2xl font-semibold text-white">Meals</h3>
+          </div>
+          <div className="mb-6">
+            <DatePicker onDateSelect={(date: Date) => onDateChange ? onDateChange(date) : undefined} />
+          </div>
 
         {loading && meals.length === 0 ? (
           <p className="text-gray-300 text-center py-8 flex items-center justify-center gap-2">
@@ -242,6 +908,67 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
         <div className="flex items-center justify-between p-4 glass-light rounded-lg border-t-2 border-purple-500/50">
           <p className="font-semibold text-white">Total Calories:</p>
           <p className="text-2xl font-bold text-purple-400">{totalCalories.toLocaleString()}</p>
+        </div>
+      </div>
+
+      {/* Macros Card */}
+      <div className="glass rounded-2xl p-6 hover:scale-105 transition-transform duration-300 animate-fadeIn lg:col-span-2">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-6 h-6 bg-gradient-to-r from-green-400 to-blue-500 rounded"></div>
+          <h3 className="text-2xl font-semibold text-white">Macronutrients ({formattedDate})</h3>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Protein */}
+          <div className="glass-light rounded-lg p-4 border border-green-500/30">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-300 font-medium">Protein</span>
+              <span className="text-green-400 font-bold">{Math.round(totalProtein)}g</span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+              <div
+                className="bg-green-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min((totalProtein / proteinGoal) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-400">
+              {Math.round(totalProtein)} / {proteinGoal}g ({Math.round((totalProtein / proteinGoal) * 100)}%)
+            </p>
+          </div>
+
+          {/* Carbs */}
+          <div className="glass-light rounded-lg p-4 border border-blue-500/30">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-300 font-medium">Carbs</span>
+              <span className="text-blue-400 font-bold">{Math.round(totalCarbs)}g</span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+              <div
+                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min((totalCarbs / carbsGoal) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-400">
+              {Math.round(totalCarbs)} / {carbsGoal}g ({Math.round((totalCarbs / carbsGoal) * 100)}%)
+            </p>
+          </div>
+
+          {/* Fat */}
+          <div className="glass-light rounded-lg p-4 border border-yellow-500/30">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-300 font-medium">Fat</span>
+              <span className="text-yellow-400 font-bold">{Math.round(totalFat)}g</span>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
+              <div
+                className="bg-yellow-500 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${Math.min((totalFat / fatGoal) * 100, 100)}%` }}
+              ></div>
+            </div>
+            <p className="text-xs text-gray-400">
+              {Math.round(totalFat)} / {fatGoal}g ({Math.round((totalFat / fatGoal) * 100)}%)
+            </p>
+          </div>
         </div>
       </div>
     </div>

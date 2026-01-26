@@ -7,6 +7,9 @@ export interface Meal {
   name: string;
   calories: number;
   type: MealType;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
 }
 
 export interface UserStats {

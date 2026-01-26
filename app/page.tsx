@@ -29,6 +29,7 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [userStats, setUserStats] = useState<UserStats>({
     caloriesConsumed: 1847,
     caloriesGoal: 2000,
@@ -133,7 +134,7 @@ export default function Home() {
       {/* Main Content Area - Responsive margins */}
       <main className="ml-0 md:ml-24 lg:mr-80 xl:mr-96 mt-20 min-h-screen p-4 md:p-6 lg:p-8 transition-all duration-300">
         {activeModule === 'dashboard' && <DashboardModule key={refreshKey} stats={userStats} />}
-        {activeModule === 'calories' && <CalorieTracker onMealsUpdate={handleMealsUpdate} />}
+        {activeModule === 'calories' && <CalorieTracker onMealsUpdate={handleMealsUpdate} selectedDate={selectedDate} onDateChange={setSelectedDate} />}
         {activeModule === 'calculator' && <CalculatorModule />}
         {activeModule === 'fasting' && <FastingTracker onFastingUpdate={handleFastingUpdate} onStateChange={handleFastingStateChange} />}
         {activeModule === 'workouts' && <WorkoutsModule />}
