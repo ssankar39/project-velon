@@ -1,60 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCollection } from '@/lib/mongodb';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * Search exercises from our own MongoDB exercise library.
+ * Query params: q (text), muscle (primary muscle), userId (for custom exercises), limit
+ */
 export async function GET(req: NextRequest) {
   try {
-    const searchParams = req.nextUrl.searchParams;
-    const query = searchParams.get('q');
-    const bodyPart = searchParams.get('bodyPart');
+    const sp = req.nextUrl.searchParams;
+    const q = sp.get('q')?.trim();
+    const muscle = sp.get('muscle') || sp.get('bodyPart');
+    const userId = sp.get('userId');
+    const limit = Math.min(Number(sp.get('limit') || 20), 50);
 
-    if ((!query || query.trim().length < 2) && !bodyPart) {
+    if (!q && !muscle) {
       return NextResponse.json([], { status: 200 });
     }
 
-    let apiUrl = '';
-    
-    // If bodyPart is specified, use the bodypart-specific endpoint or filter
-    if (bodyPart && !query) {
-      // Search by body part only
-      apiUrl = `https://www.exercisedb.dev/api/v1/bodyparts/${encodeURIComponent(bodyPart)}/exercises?limit=20`;
-    } else if (bodyPart && query) {
-      // Search with both query and body part filter
-      apiUrl = `https://www.exercisedb.dev/api/v1/exercises/filter?search=${encodeURIComponent(query)}&bodyParts=${encodeURIComponent(bodyPart)}&limit=20`;
-    } else if (query) {
-      // Search by query only
-      apiUrl = `https://www.exercisedb.dev/api/v1/exercises/search?q=${encodeURIComponent(query)}&limit=20`;
+    const col = await getCollection('Exercise');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const query: Record<string, any> = {};
+
+    // Text search by name or aliases (case-insensitive regex)
+    if (q && q.length >= 2) {
+      const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      query.$or = [
+        { name: { $regex: escaped, $options: 'i' } },
+        { aliases: { $regex: escaped, $options: 'i' } },
+      ];
     }
 
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      console.error('ExerciseDB API error:', response.statusText);
-      return NextResponse.json([], { status: 200 });
+    if (muscle) {
+      query.primaryMuscles = muscle;
     }
 
-    const result = await response.json();
-
-    // Check if the response is successful
-    if (!result.success || !result.data) {
-      return NextResponse.json([], { status: 200 });
+    // Include built-in + user custom exercises
+    if (userId) {
+      const visibility = [{ isCustom: false }, { isCustom: true, createdBy: userId }];
+      if (query.$or) {
+        const textOr = query.$or;
+        delete query.$or;
+        query.$and = [{ $or: textOr }, { $or: visibility }];
+      } else {
+        query.$or = visibility;
+      }
     }
 
-    // Transform the data to match our interface
-    const suggestions = result.data.map((exercise: { exerciseId: string; name: string; bodyParts?: string[]; targetMuscles?: string[]; equipments?: string[]; gifUrl: string }) => ({
-      id: exercise.exerciseId,
-      name: exercise.name,
-      bodyPart: exercise.bodyParts?.[0] || 'general',
-      target: exercise.targetMuscles?.[0] || 'various',
-      equipment: exercise.equipments?.[0] || 'body weight',
-      gifUrl: exercise.gifUrl,
+    const exercises = await col.find(query).limit(limit).sort({ name: 1 }).toArray();
+
+    const results = exercises.map(e => ({
+      id: e._id.toString(),
+      _id: e._id.toString(),
+      name: e.name,
+      bodyPart: e.primaryMuscles?.[0] ?? 'general',
+      target: e.primaryMuscles?.join(', ') ?? '',
+      equipment: e.equipment ?? ['bodyweight'],
+      primaryMuscles: e.primaryMuscles ?? [],
+      secondaryMuscles: e.secondaryMuscles ?? [],
+      movementPattern: e.movementPattern,
+      difficulty: e.difficulty,
+      category: e.category,
+      instructions: e.instructions ?? '',
+      aliases: e.aliases ?? [],
+      variations: e.variations ?? [],
+      rating: e.rating ?? 0,
+      defaultRepRange: e.defaultRepRange ?? { min: 8, max: 12 },
+      isCustom: e.isCustom ?? false,
     }));
 
-    return NextResponse.json(suggestions, { status: 200 });
+    return NextResponse.json(results, { status: 200 });
   } catch (error) {
     console.error('Error searching exercises:', error);
     return NextResponse.json([], { status: 200 });
