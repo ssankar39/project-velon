@@ -13,6 +13,7 @@ import MetricsModule from '@/app/components/Metrics/MetricsModule';
 import { ProfilePage } from '@/app/components/Profile/ProfilePage';
 import { SettingsPage } from '@/app/components/Settings/SettingsPage';
 import LandingPage from '@/app/components/LandingPage';
+import AIChatWidget from '@/app/components/AIChatWidget';
 import { UserStats, Meal, FastingState } from '@/app/types';
 
 interface AuthUser {
@@ -147,6 +148,9 @@ export default function Home() {
       <div className="hidden lg:block">
         <RightSidebar key={refreshKey} />
       </div>
+
+      {/* AI Coach Chat Widget - Workouts only */}
+      {activeModule === 'workouts' && <AIChatWidget />}
     </div>
   );
 }

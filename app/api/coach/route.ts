@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     let summary = buildFallbackSummary(engineResult);
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY;
     if (apiKey) {
       try {
         summary = await generateAISummary(apiKey, session, engineResult);
