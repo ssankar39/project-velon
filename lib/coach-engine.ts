@@ -124,6 +124,15 @@ export function runCoachEngine(input: CoachInput): Omit<CoachRecommendation, 'su
   const { currentSession, recentSessions, muscleMap } = input;
   const goal = currentSession.goal || 'hypertrophy';
 
+  // Focus under-volume guidance on muscles the athlete actually trained this session.
+  const activeMuscles = new Set<string>();
+  for (const ex of currentSession.exercises) {
+    const muscles = muscleMap[ex.exerciseId];
+    if (!muscles) continue;
+    for (const m of muscles.primary) activeMuscles.add(m);
+    for (const m of muscles.secondary) activeMuscles.add(m);
+  }
+
   const targets: ExerciseTarget[] = [];
   const adjustments: ProgressionAdjustment[] = [];
   const warnings: CoachWarning[] = [];
@@ -305,16 +314,19 @@ export function runCoachEngine(input: CoachInput): Omit<CoachRecommendation, 'su
     const current = Math.round(muscleSets[muscle] || 0);
     let action: 'increase' | 'decrease' | 'maintain' = 'maintain';
     let suggestion: string | undefined;
+    const isRelevantMuscle = activeMuscles.has(muscle) || current > 0;
 
     if (current < range.min) {
-      action = 'increase';
-      suggestion = `Add ${range.min - current} more sets for ${muscle} this week.`;
-      warnings.push({
-        type: 'undervolume',
-        severity: current < range.min * 0.5 ? 'medium' : 'low',
-        message: `${muscle}: Only ${current} sets this week (target ${range.min}-${range.max}). Underdeveloped volume.`,
-        affectedMuscle: muscle,
-      });
+      if (isRelevantMuscle) {
+        action = 'increase';
+        suggestion = `Add ${range.min - current} more sets for ${muscle} this week.`;
+        warnings.push({
+          type: 'undervolume',
+          severity: current < range.min * 0.5 ? 'medium' : 'low',
+          message: `${muscle}: Only ${current} sets this week (target ${range.min}-${range.max}). Underdeveloped volume.`,
+          affectedMuscle: muscle,
+        });
+      }
     } else if (current > range.max) {
       action = 'decrease';
       suggestion = `Reduce ${current - range.max} sets for ${muscle} — approaching junk volume.`;
@@ -327,7 +339,7 @@ export function runCoachEngine(input: CoachInput): Omit<CoachRecommendation, 'su
     }
 
     // Only report muscles with actionable imbalances
-    if (action !== 'maintain' || current > 0) {
+    if (action !== 'maintain' || (current > 0 && isRelevantMuscle)) {
       volumeBalance.push({
         muscleGroup: muscle,
         currentSets: current,

@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 
+type WeightTimeframe = 'daily' | 'weekly' | 'monthly';
+
 interface DataPoint {
   day: string;
   actual: number;
@@ -38,6 +40,115 @@ interface Metric {
   timestamp: string;
 }
 
+interface WeightAvailability {
+  weekly: boolean;
+  monthly: boolean;
+}
+
+const formatWeight = (value: number) => {
+  return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+};
+
+const getDateKey = (date: Date) => date.toISOString().split('T')[0];
+
+const getWeekStart = (date: Date) => {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+};
+
+const aggregateWeightByDay = (metrics: Metric[], goalWeight: number): DataPoint[] => {
+  const dayMap = new Map<string, { sum: number; count: number; date: Date }>();
+
+  for (const metric of metrics) {
+    if (typeof metric.weight !== 'number') continue;
+    const date = new Date(metric.timestamp);
+    if (Number.isNaN(date.getTime())) continue;
+
+    const key = getDateKey(date);
+    const existing = dayMap.get(key);
+
+    if (existing) {
+      existing.sum += metric.weight;
+      existing.count += 1;
+    } else {
+      dayMap.set(key, { sum: metric.weight, count: 1, date });
+    }
+  }
+
+  return [...dayMap.entries()]
+    .sort((a, b) => a[1].date.getTime() - b[1].date.getTime())
+    .slice(-30)
+    .map(([key, entry]) => ({
+      day: new Date(key).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      actual: Number((entry.sum / entry.count).toFixed(1)),
+      target: goalWeight,
+    }));
+};
+
+const aggregateWeightByWeek = (metrics: Metric[], goalWeight: number): DataPoint[] => {
+  const weekMap = new Map<string, { sum: number; count: number; weekStart: Date }>();
+
+  for (const metric of metrics) {
+    if (typeof metric.weight !== 'number') continue;
+    const date = new Date(metric.timestamp);
+    if (Number.isNaN(date.getTime())) continue;
+
+    const weekStart = getWeekStart(date);
+    const key = getDateKey(weekStart);
+    const existing = weekMap.get(key);
+
+    if (existing) {
+      existing.sum += metric.weight;
+      existing.count += 1;
+    } else {
+      weekMap.set(key, { sum: metric.weight, count: 1, weekStart });
+    }
+  }
+
+  return [...weekMap.entries()]
+    .sort((a, b) => a[1].weekStart.getTime() - b[1].weekStart.getTime())
+    .slice(-12)
+    .map(([, entry]) => ({
+      day: entry.weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      actual: Number((entry.sum / entry.count).toFixed(1)),
+      target: goalWeight,
+    }));
+};
+
+const aggregateWeightByMonth = (metrics: Metric[], goalWeight: number): DataPoint[] => {
+  const monthMap = new Map<string, { sum: number; count: number; monthStart: Date }>();
+
+  for (const metric of metrics) {
+    if (typeof metric.weight !== 'number') continue;
+    const date = new Date(metric.timestamp);
+    if (Number.isNaN(date.getTime())) continue;
+
+    const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
+    const key = `${monthStart.getFullYear()}-${String(monthStart.getMonth() + 1).padStart(2, '0')}`;
+    const existing = monthMap.get(key);
+
+    if (existing) {
+      existing.sum += metric.weight;
+      existing.count += 1;
+    } else {
+      monthMap.set(key, { sum: metric.weight, count: 1, monthStart });
+    }
+  }
+
+  return [...monthMap.entries()]
+    .sort((a, b) => a[1].monthStart.getTime() - b[1].monthStart.getTime())
+    .slice(-12)
+    .map(([, entry]) => ({
+      day: entry.monthStart.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      actual: Number((entry.sum / entry.count).toFixed(1)),
+      target: goalWeight,
+    }));
+};
+
 export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   data: externalData,
   title = 'Weekly Progress',
@@ -48,18 +159,23 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [weightTimeframe, setWeightTimeframe] = useState<WeightTimeframe>('daily');
+  const [weightAvailability, setWeightAvailability] = useState<WeightAvailability>({
+    weekly: false,
+    monthly: false,
+  });
 
   useEffect(() => {
     if (externalData) {
       setData(externalData);
       setLoading(false);
     } else {
-      fetchWeeklyData();
+      fetchGraphData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metricType, userId]);
+  }, [metricType, userId, weightGoal, weightTimeframe]);
 
-  const fetchWeeklyData = async () => {
+  const fetchGraphData = async () => {
     try {
       setLoading(true);
       const storedUser = localStorage.getItem('user');
@@ -75,31 +191,42 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
 
       // Fetch data based on metric type
       if (metricType === 'weight') {
-        // Fetch all recent metrics (not limited to week)
         const response = await fetch(`/api/metrics?userId=${encodeURIComponent(userEmail)}`);
         const metrics: Metric[] = await response.json();
-        
-        const goalWeight = weightGoal || 180; // Use provided goal or default
-        
-        // Take last 10 metric entries or all if less than 10
-        const recentMetrics = metrics.slice(0, 10).reverse();
-        
-        chartData = recentMetrics.map((metric) => {
-          const date = new Date(metric.timestamp);
-          const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-          
-          return {
-            day: label,
-            actual: metric.weight || 0,
-            target: goalWeight,
-          };
-        });
 
-        // If no metrics, show empty state
-        if (chartData.length === 0) {
-          chartData = [{ day: 'No data', actual: 0, target: goalWeight }];
+        const validMetrics = metrics.filter((metric) => typeof metric.weight === 'number');
+        const goalWeightValue = weightGoal || 180;
+
+        const dailyData = aggregateWeightByDay(validMetrics, goalWeightValue);
+        const weeklyData = aggregateWeightByWeek(validMetrics, goalWeightValue);
+        const monthlyData = aggregateWeightByMonth(validMetrics, goalWeightValue);
+
+        const availability: WeightAvailability = {
+          weekly: weeklyData.length >= 2,
+          monthly: monthlyData.length >= 2,
+        };
+
+        setWeightAvailability(availability);
+
+        if (weightTimeframe === 'daily') {
+          chartData = dailyData;
+        } else if (weightTimeframe === 'weekly') {
+          if (availability.weekly) {
+            chartData = weeklyData;
+          } else {
+            setWeightTimeframe('daily');
+            chartData = dailyData;
+          }
+        } else {
+          if (availability.monthly) {
+            chartData = monthlyData;
+          } else {
+            setWeightTimeframe('daily');
+            chartData = dailyData;
+          }
         }
       } else {
+        setWeightAvailability({ weekly: false, monthly: false });
         // For other metric types, keep weekly view
         const weekData: DataPoint[] = [];
         const today = new Date();
@@ -173,7 +300,7 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
 
       setData(chartData);
     } catch (error) {
-      console.error('Error fetching weekly data:', error);
+      console.error('Error fetching graph data:', error);
       setDefaultData();
     } finally {
       setLoading(false);
@@ -198,19 +325,85 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
     return (
       <div className="glass rounded-2xl p-6 animate-fadeIn">
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400">Loading weekly data...</p>
+          <p className="text-gray-400">Loading activity data...</p>
         </div>
       </div>
     );
   }
 
-  const maxValue = Math.max(...data.map((d) => Math.max(d.actual, d.target)), 1);
+  const isWeightGraph = metricType === 'weight';
+
+  if (isWeightGraph && data.length === 0) {
+    return (
+      <div className="glass rounded-2xl p-4 md:p-6 animate-fadeIn">
+        <div className="mb-4 md:mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h3 className="text-lg md:text-xl font-bold text-white">{title}</h3>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setWeightTimeframe('daily')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors bg-purple-600/30 text-purple-300 border border-purple-500/40"
+            >
+              Daily
+            </button>
+            <button
+              type="button"
+              disabled
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-white/10 bg-white/5 text-gray-500 cursor-not-allowed"
+              title="Not enough data"
+            >
+              Weekly (Not enough data)
+            </button>
+            <button
+              type="button"
+              disabled
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold border border-white/10 bg-white/5 text-gray-500 cursor-not-allowed"
+              title="Not enough data"
+            >
+              Monthly (Not enough data)
+            </button>
+          </div>
+        </div>
+        <div className="h-64 flex items-center justify-center text-gray-400 text-sm">
+          No weight entries yet. Log your weight to view daily fluctuations.
+        </div>
+      </div>
+    );
+  }
+
+  const actualValues = data.map((d) => d.actual);
+  const targetValues = data.map((d) => d.target);
+
+  let minValue = 0;
+  let maxValue = Math.max(...data.map((d) => Math.max(d.actual, d.target)), 1);
+
+  if (isWeightGraph) {
+    const actualMin = Math.min(...actualValues);
+    const actualMax = Math.max(...actualValues);
+    const range = actualMax - actualMin;
+    const dynamicPadding = Math.max(range * 0.35, 1);
+
+    minValue = actualMin - dynamicPadding;
+    maxValue = actualMax + dynamicPadding;
+
+    // If the goal is close to the current weight range, include it in view.
+    const targetMin = Math.min(...targetValues);
+    const targetMax = Math.max(...targetValues);
+    const includeGoalLine = targetMin <= maxValue + 8 && targetMax >= minValue - 8;
+    if (includeGoalLine) {
+      minValue = Math.min(minValue, targetMin - 1);
+      maxValue = Math.max(maxValue, targetMax + 1);
+    }
+  }
+
   const padding = 60;
   const graphHeight = 300;
   const graphWidth = 800;
 
   const getY = (value: number) => {
-    return graphHeight - (value / maxValue) * (graphHeight - padding) - padding / 2;
+    const denominator = Math.max(maxValue - minValue, 1);
+    const normalized = (value - minValue) / denominator;
+    return graphHeight - normalized * (graphHeight - padding) - padding / 2;
   };
 
   const getX = (index: number) => {
@@ -240,16 +433,63 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
 
   return (
     <div className="glass rounded-2xl p-4 md:p-6 animate-fadeIn">
-      <div className="mb-4 md:mb-6">
+      <div className="mb-4 md:mb-6 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h3 className="text-lg md:text-xl font-bold text-white mb-2">{title}</h3>
+        {isWeightGraph && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setWeightTimeframe('daily')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                weightTimeframe === 'daily'
+                  ? 'bg-purple-600/30 text-purple-300 border-purple-500/40'
+                  : 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+              }`}
+            >
+              Daily
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeightTimeframe('weekly')}
+              disabled={!weightAvailability.weekly}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                weightTimeframe === 'weekly' && weightAvailability.weekly
+                  ? 'bg-purple-600/30 text-purple-300 border-purple-500/40'
+                  : weightAvailability.weekly
+                    ? 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+                    : 'bg-white/5 text-gray-500 border-white/10 cursor-not-allowed'
+              }`}
+              title={weightAvailability.weekly ? 'Show weekly trend' : 'Not enough data'}
+            >
+              {weightAvailability.weekly ? 'Weekly' : 'Weekly (Not enough data)'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setWeightTimeframe('monthly')}
+              disabled={!weightAvailability.monthly}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                weightTimeframe === 'monthly' && weightAvailability.monthly
+                  ? 'bg-purple-600/30 text-purple-300 border-purple-500/40'
+                  : weightAvailability.monthly
+                    ? 'bg-white/5 text-gray-300 border-white/10 hover:bg-white/10'
+                    : 'bg-white/5 text-gray-500 border-white/10 cursor-not-allowed'
+              }`}
+              title={weightAvailability.monthly ? 'Show monthly trend' : 'Not enough data'}
+            >
+              {weightAvailability.monthly ? 'Monthly' : 'Monthly (Not enough data)'}
+            </button>
+          </div>
+        )}
+      </div>
+      <div className="mb-4 md:mb-6">
         <div className="flex flex-wrap gap-3 md:gap-6 text-xs md:text-sm">
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 bg-purple-500" />
-            <span className="text-gray-400">Actual Performance</span>
+            <span className="text-gray-400">{isWeightGraph ? 'Logged Weight' : 'Actual Performance'}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-0.5 border-b-2 border-dashed border-yellow-400" />
-            <span className="text-gray-400">Target Goals</span>
+            <span className="text-gray-400">{isWeightGraph ? 'Goal Weight' : 'Target Goals'}</span>
           </div>
         </div>
       </div>
@@ -359,10 +599,10 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
                 <div className="glass-light rounded-lg p-3 text-center shadow-xl border border-purple-500/30" style={{ position: 'relative', zIndex: 50 }}>
                   <p className="text-xs text-gray-400 mb-1">{data[hoveredIndex].day}</p>
                   <p className="text-sm text-purple-400 font-semibold">
-                    Actual: {data[hoveredIndex].actual}
+                    Actual: {isWeightGraph ? formatWeight(data[hoveredIndex].actual) : data[hoveredIndex].actual}
                   </p>
                   <p className="text-sm text-yellow-400 font-semibold">
-                    Target: {data[hoveredIndex].target}
+                    Target: {isWeightGraph ? formatWeight(data[hoveredIndex].target) : data[hoveredIndex].target}
                   </p>
                 </div>
               </foreignObject>
@@ -388,11 +628,11 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
 
           {/* Y-axis labels */}
           {[0, 1, 2, 3, 4].map((i) => {
-            const value = Math.round((maxValue / 4) * i);
+            const value = minValue + ((maxValue - minValue) / 4) * i;
             const y = graphHeight - (i / 4) * (graphHeight - padding) - padding / 2;
             return (
               <text key={i} x={padding - 10} y={y + 4} textAnchor="end" fontSize="12" fill="#9ca3af">
-                {value}
+                {isWeightGraph ? formatWeight(value) : Math.round(value)}
               </text>
             );
           })}

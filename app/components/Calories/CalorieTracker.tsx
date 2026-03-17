@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Meal, MealType } from '@/app/types';
 import { Plus, Trash2, Calendar, Loader2, Search, X } from 'lucide-react';
 import { DatePicker } from '../DatePicker';
+import { calculateBMR_KatchMcArdle, atwaterAdjustMacros } from '@/app/utils/calculations';
 
 interface CalorieTrackerProps {
   onMealsUpdate: (meals: Meal[]) => void;
@@ -55,6 +56,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
   const [currentWeight, setCurrentWeight] = useState<number>(0);
+  const [latestBodyFat, setLatestBodyFat] = useState<number | null>(null);
   const [formState, setFormState] = useState({
     foodName: '',
     calories: '',
@@ -68,6 +70,8 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   const [selectedFood, setSelectedFood] = useState<FoodSearchResult | null>(null);
   const [selectedServingAmount, setSelectedServingAmount] = useState(100);
   const [selectedServingUnit, setSelectedServingUnit] = useState('g');
+  // Store original per-100g nutrient values to avoid compounding errors
+  const [nutrientsPer100g, setNutrientsPer100g] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
 
   // Get current user from localStorage
   useEffect(() => {
@@ -81,20 +85,12 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
     }
   }, []);
 
-  // Load user preferences and current weight
+  // Load user preferences, current weight, and body fat
   useEffect(() => {
     if (currentUser) {
       fetchUserPreferences();
       fetchCurrentWeight();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentUser]);
-
-  // Load user preferences and current weight
-  useEffect(() => {
-    if (currentUser) {
-      fetchUserPreferences();
-      fetchCurrentWeight();
+      fetchLatestBodyFat();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser]);
@@ -142,6 +138,25 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
     }
   };
 
+  const fetchLatestBodyFat = async () => {
+    if (!currentUser?.email) return;
+    try {
+      const response = await fetch(
+        `/api/metrics?userId=${encodeURIComponent(currentUser.email)}`
+      );
+      if (response.ok) {
+        const metrics = await response.json();
+        // metrics are sorted newest-first; find the first one with a bodyFat value
+        const withBf = (metrics as Record<string, unknown>[]).find(
+          (m) => typeof m.bodyFat === 'number' && (m.bodyFat as number) > 0
+        );
+        if (withBf) setLatestBodyFat(withBf.bodyFat as number);
+      }
+    } catch (error) {
+      console.error('Error fetching body fat:', error);
+    }
+  };
+
   // Calculate macro goals based on user data
   const calculateMacroGoals = () => {
     if (!userPreferences || !currentWeight) {
@@ -164,31 +179,35 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       heightCm = height * 2.54;
     }
 
-    // Calculate BMR using Mifflin-St Jeor Equation
+    // Use Katch-McArdle when body fat is known (more accurate for individuals
+    // with known body composition); fall back to Mifflin-St Jeor otherwise.
     let bmr: number;
-    if (gender === 'male') {
-      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+    let equation: string;
+    if (latestBodyFat && latestBodyFat > 0) {
+      const km = calculateBMR_KatchMcArdle(weightKg, latestBodyFat, activityLevel);
+      bmr = km.bmr;
+      equation = 'Katch-McArdle';
     } else {
-      bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+      if (gender === 'male') {
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age + 5;
+      } else {
+        bmr = 10 * weightKg + 6.25 * heightCm - 5 * age - 161;
+      }
+      equation = 'Mifflin-St Jeor';
     }
 
     // Calculate TDEE
     const tdee = Math.round(bmr * activityLevel);
 
-    // Calculate macros using a realistic split for general fitness (50/25/25)
-    // Carbs: 50% of calories, 1g = 4 calories
-    const carbsCalories = tdee * 0.50;
-    const carbsGoal = Math.round(carbsCalories / 4);
-
-    // Protein: 25% of calories, 1g = 4 calories
-    const proteinCalories = tdee * 0.25;
-    const proteinGoal = Math.round(proteinCalories / 4);
-
-    // Fat: 25% of calories, 1g = 9 calories
-    const fatCalories = tdee * 0.25;
-    const fatGoal = Math.round(fatCalories / 9);
+    // Atwater-based macro split for general fitness (50/25/25)
+    // Protein: 4 kcal/g | Carbs: 4 kcal/g | Fat: 9 kcal/g
+    const carbsGoal = Math.round((tdee * 0.50) / 4);
+    const proteinGoal = Math.round((tdee * 0.25) / 4);
+    const fatGoal = Math.round((tdee * 0.25) / 9);
 
     console.log('Macro Calculation:', {
+      equation,
+      bodyFat: latestBodyFat,
       weight: currentWeight,
       weightKg,
       height,
@@ -198,9 +217,6 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       activityLevel,
       bmr,
       tdee,
-      carbsCalories,
-      proteinCalories,
-      fatCalories,
       proteinGoal,
       carbsGoal,
       fatGoal
@@ -301,15 +317,17 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
             factor = mealCalories / sourceCalories;
           }
 
-          const protein = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).protein) * factor) : toNumber((first as Record<string, unknown>).protein);
-          const carbs = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).carbs) * factor) : toNumber((first as Record<string, unknown>).carbs);
-          const fat = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).fat) * factor) : toNumber((first as Record<string, unknown>).fat);
+          const rawP = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).protein) * factor) : toNumber((first as Record<string, unknown>).protein);
+          const rawC = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).carbs) * factor) : toNumber((first as Record<string, unknown>).carbs);
+          const rawF = factor > 0 ? Math.round(toNumber((first as Record<string, unknown>).fat) * factor) : toNumber((first as Record<string, unknown>).fat);
+          // Atwater cross-check to prevent inflated macros
+          const adjusted = atwaterAdjustMacros(mealCalories, rawP, rawC, rawF);
 
           return {
             ...meal,
-            protein: toNumber((meal as unknown as Record<string, unknown>).protein) || protein,
-            carbs: toNumber((meal as unknown as Record<string, unknown>).carbs) || carbs,
-            fat: toNumber((meal as unknown as Record<string, unknown>).fat) || fat,
+            protein: toNumber((meal as unknown as Record<string, unknown>).protein) || adjusted.protein,
+            carbs: toNumber((meal as unknown as Record<string, unknown>).carbs) || adjusted.carbs,
+            fat: toNumber((meal as unknown as Record<string, unknown>).fat) || adjusted.fat,
           } as Meal;
         } catch {
           return meal;
@@ -354,30 +372,60 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   };
 
   const selectFood = (food: FoodSearchResult) => {
-    setSelectedFood(food);
+    // Store original per-100g values from the API
+    const origNutrients = {
+      calories: food.calories,
+      protein: food.protein || 0,
+      carbs: food.carbs || 0,
+      fat: food.fat || 0,
+    };
+    setNutrientsPer100g(origNutrients);
     
     // Check if food has USDA portions
     if (food.portions && food.portions.length > 0) {
       const firstPortion = food.portions[0];
       setSelectedServingAmount(firstPortion.amount);
       setSelectedServingUnit(firstPortion.unit || 'serving');
+
+      // Scale macros for the first portion's gram weight, then Atwater-adjust
+      const grams = firstPortion.gramWeight || 100;
+      const rawP = Math.round((origNutrients.protein * grams) / 100);
+      const rawC = Math.round((origNutrients.carbs * grams) / 100);
+      const rawF = Math.round((origNutrients.fat * grams) / 100);
+      const adjusted = atwaterAdjustMacros(firstPortion.calories, rawP, rawC, rawF);
+
+      setSelectedFood({
+        ...food,
+        protein: adjusted.protein,
+        carbs: adjusted.carbs,
+        fat: adjusted.fat,
+      });
+
+      setFormState({
+        ...formState,
+        foodName: food.brandName
+          ? `${food.brandName} - ${food.description}`
+          : food.description,
+        calories: firstPortion.calories.toString(),
+        servingSize: firstPortion.description || `${firstPortion.amount} ${firstPortion.unit}`,
+      });
     } else {
       const baseAmount = food.servingSize || 100;
       const baseUnit = food.servingSizeUnit || 'g';
       setSelectedServingAmount(baseAmount);
       setSelectedServingUnit(baseUnit);
+      setSelectedFood(food);
+
+      setFormState({
+        ...formState,
+        foodName: food.brandName
+          ? `${food.brandName} - ${food.description}`
+          : food.description,
+        calories: food.calories.toString(),
+        servingSize: `${baseAmount}${baseUnit}`,
+      });
     }
-    
-    setFormState({
-      ...formState,
-      foodName: food.brandName 
-        ? `${food.brandName} - ${food.description}`
-        : food.description,
-      calories: food.calories.toString(),
-      servingSize: food.portions && food.portions.length > 0
-        ? food.portions[0].description || `${food.portions[0].amount} ${food.portions[0].unit}`
-        : `${food.servingSize || 100}${food.servingSizeUnit || 'g'}`,
-    });
+
     setShowSearch(false);
     setSearchQuery('');
     setSearchResults([]);
@@ -403,18 +451,18 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   };
 
   const handleConvertMeasurement = () => {
-    if (!selectedFood) return;
+    if (!selectedFood || !nutrientsPer100g) return;
     
     // Convert unit to grams for calculation
     const gramsAmount = convertToGrams(selectedServingAmount, selectedServingUnit);
     
-    // Calculate calories - USDA nutrients are per 100g
-    const newCalories = Math.round((selectedFood.calories * gramsAmount) / 100);
-    
-    // Calculate macros
-    const protein = Math.round(((selectedFood.protein || 0) * gramsAmount) / 100);
-    const carbs = Math.round(((selectedFood.carbs || 0) * gramsAmount) / 100);
-    const fat = Math.round(((selectedFood.fat || 0) * gramsAmount) / 100);
+    // Always calculate from original per-100g values to avoid compounding
+    const newCalories = Math.round((nutrientsPer100g.calories * gramsAmount) / 100);
+    const rawP = Math.round((nutrientsPer100g.protein * gramsAmount) / 100);
+    const rawC = Math.round((nutrientsPer100g.carbs * gramsAmount) / 100);
+    const rawF = Math.round((nutrientsPer100g.fat * gramsAmount) / 100);
+    // Atwater cross-check: scale macros so 4/4/9 sum ≈ stated calories
+    const adjusted = atwaterAdjustMacros(newCalories, rawP, rawC, rawF);
     
     setFormState({
       ...formState,
@@ -422,12 +470,12 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       servingSize: `${selectedServingAmount}${selectedServingUnit}`,
     });
     
-    // Update selected food with calculated macros
+    // Update selected food with Atwater-adjusted macros
     setSelectedFood({
       ...selectedFood,
-      protein,
-      carbs,
-      fat,
+      protein: adjusted.protein,
+      carbs: adjusted.carbs,
+      fat: adjusted.fat,
     });
   };
 
@@ -457,11 +505,26 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   };
 
   const handlePortionChange = (portionIndex: number) => {
-    if (!selectedFood || !selectedFood.portions) return;
+    if (!selectedFood || !selectedFood.portions || !nutrientsPer100g) return;
     
     const portion = selectedFood.portions[portionIndex];
     setSelectedServingAmount(portion.amount);
     setSelectedServingUnit(portion.unit || 'serving');
+    
+    // Calculate macros from original per-100g values using portion gram weight
+    const grams = portion.gramWeight || 100;
+    const rawP = Math.round((nutrientsPer100g.protein * grams) / 100);
+    const rawC = Math.round((nutrientsPer100g.carbs * grams) / 100);
+    const rawF = Math.round((nutrientsPer100g.fat * grams) / 100);
+    // Atwater cross-check against stated portion calories
+    const adjusted = atwaterAdjustMacros(portion.calories, rawP, rawC, rawF);
+    
+    setSelectedFood({
+      ...selectedFood,
+      protein: adjusted.protein,
+      carbs: adjusted.carbs,
+      fat: adjusted.fat,
+    });
     
     // Use pre-calculated calories from API
     setFormState({
@@ -522,6 +585,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
 
       setFormState({ foodName: '', calories: '', servingSize: '', mealType: 'breakfast' });
       setSelectedFood(null);
+      setNutrientsPer100g(null);
       setSelectedServingAmount(100);
       setSelectedServingUnit('g');
       

@@ -15,6 +15,9 @@ interface PreferencesData {
   height: string;
   heightUnit: 'in' | 'cm';
   activityLevel: string;
+  experienceLevel: 'beginner' | 'intermediate' | 'advanced';
+  fitnessGoal: 'hypertrophy' | 'strength' | 'endurance';
+  weightUnit: 'lbs' | 'kg';
 }
 
 export const SettingsPage: React.FC = () => {
@@ -27,6 +30,9 @@ export const SettingsPage: React.FC = () => {
     height: '',
     heightUnit: 'in',
     activityLevel: '1.55',
+    experienceLevel: 'beginner',
+    fitnessGoal: 'hypertrophy',
+    weightUnit: 'lbs',
   });
   const [goals, setGoals] = useState({
     calorieGoal: '',
@@ -60,6 +66,9 @@ export const SettingsPage: React.FC = () => {
           height: data.height?.toString() || '',
           heightUnit: data.heightUnit || 'in',
           activityLevel: data.activityLevel?.toString() || '1.55',
+          experienceLevel: data.experienceLevel || 'beginner',
+          fitnessGoal: data.fitnessGoal || 'hypertrophy',
+          weightUnit: data.weightUnit || 'lbs',
         }));
         setGoals({
           calorieGoal: data.calorieGoal?.toString() || '',
@@ -104,6 +113,9 @@ export const SettingsPage: React.FC = () => {
           height: preferences.height ? parseFloat(preferences.height) : null,
           heightUnit: preferences.heightUnit,
           activityLevel: preferences.activityLevel ? parseFloat(preferences.activityLevel) : null,
+          experienceLevel: preferences.experienceLevel,
+          fitnessGoal: preferences.fitnessGoal,
+          weightUnit: preferences.weightUnit,
           calorieGoal: goals.calorieGoal ? parseInt(goals.calorieGoal) : null,
           fastingGoal: goals.fastingGoal ? parseInt(goals.fastingGoal) : null,
           workoutGoal: goals.workoutGoal ? parseInt(goals.workoutGoal) : null,
@@ -239,6 +251,59 @@ export const SettingsPage: React.FC = () => {
               <option value="1.725">Active (exercise 6-7 days/week)</option>
               <option value="1.9">Very Active (intense exercise daily)</option>
             </select>
+          </div>
+
+          {/* Workout Preferences */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Experience Level */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Experience Level
+              </label>
+              <select
+                name="experienceLevel"
+                value={preferences.experienceLevel}
+                onChange={handlePreferenceChange}
+                className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
+              >
+                <option value="beginner">Beginner</option>
+                <option value="intermediate">Intermediate</option>
+                <option value="advanced">Advanced</option>
+              </select>
+            </div>
+
+            {/* Fitness Goal */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Fitness Goal
+              </label>
+              <select
+                name="fitnessGoal"
+                value={preferences.fitnessGoal}
+                onChange={handlePreferenceChange}
+                className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
+              >
+                <option value="hypertrophy">Hypertrophy</option>
+                <option value="strength">Strength</option>
+                <option value="endurance">Endurance</option>
+              </select>
+            </div>
+
+            {/* Weight Unit */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Weight Unit
+              </label>
+              <select
+                name="weightUnit"
+                value={preferences.weightUnit}
+                onChange={handlePreferenceChange}
+                className="w-full px-4 py-3 glass-light rounded-lg focus:outline-none focus:border-purple-600 focus:ring-2 focus:ring-purple-500/50 text-white border border-white/10"
+              >
+                <option value="lbs">lbs</option>
+                <option value="kg">kg</option>
+              </select>
+            </div>
           </div>
 
           {/* Divider */}

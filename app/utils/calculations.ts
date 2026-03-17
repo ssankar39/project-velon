@@ -59,6 +59,44 @@ export const calculateBMR = (data: BMRFormData): { bmr: number; tdee: number } =
   };
 };
 
+/**
+ * Katch-McArdle BMR — more accurate when body fat % is known.
+ * BMR = 370 + 21.6 × lean body mass (kg)
+ */
+export const calculateBMR_KatchMcArdle = (
+  weightKg: number,
+  bodyFatPercent: number,
+  activityLevel: number
+): { bmr: number; tdee: number } => {
+  const leanMassKg = weightKg * (1 - bodyFatPercent / 100);
+  const bmr = 370 + 21.6 * leanMassKg;
+  const tdee = bmr * activityLevel;
+  return { bmr: Math.round(bmr), tdee: Math.round(tdee) };
+};
+
+/**
+ * Atwater cross-check: scale macros so protein×4 + carbs×4 + fat×9
+ * matches the stated calories. Prevents inflated macros from rounding
+ * or specific-vs-general Atwater factor differences in USDA data.
+ */
+export const atwaterAdjustMacros = (
+  calories: number,
+  protein: number,
+  carbs: number,
+  fat: number
+): { protein: number; carbs: number; fat: number } => {
+  const computed = protein * 4 + carbs * 4 + fat * 9;
+  if (computed <= 0 || calories <= 0) return { protein, carbs, fat };
+  // Only adjust if macros overcount by > 5%
+  if (computed <= calories * 1.05) return { protein, carbs, fat };
+  const scale = calories / computed;
+  return {
+    protein: Math.round(protein * scale),
+    carbs: Math.round(carbs * scale),
+    fat: Math.round(fat * scale),
+  };
+};
+
 export const calculateBMI = (
   weight: number,
   height: number,

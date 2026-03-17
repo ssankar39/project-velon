@@ -29,7 +29,7 @@ export async function PUT(
     const body = await req.json();
     const col = await getCollection('WorkoutSession');
 
-    const allowed = ['exercises', 'notes', 'duration', 'coachFeedback', 'goal', 'experienceLevel'];
+    const allowed = ['exercises', 'notes', 'duration', 'coachFeedback', 'goal', 'experienceLevel', 'templateId', 'templateName'];
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const update: Record<string, any> = { updatedAt: new Date() };
     for (const key of allowed) {

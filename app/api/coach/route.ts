@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenAI } from '@google/genai';
 import { getCollection } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { runCoachEngine, type CoachInput } from '@/lib/coach-engine';
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// ─── AI Summary (OpenAI) ──────────────────────────────────────────────────────
+// ─── AI Summary (Gemini) ─────────────────────────────────────────────────────
 
 async function generateAISummary(
   apiKey: string,
@@ -107,16 +108,30 @@ async function generateAISummary(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   engineResult: any,
 ): Promise<string> {
-  const systemPrompt = `You are an expert strength & conditioning coach. Given a workout session log and structured analysis data, write a concise, encouraging coaching summary (3-6 paragraphs). Include:
-1. Session overview (what was done, overall performance)
-2. Specific progression recommendations with exact numbers
-3. Volume/balance observations
-4. Any warnings about fatigue, failure patterns, or imbalances
-5. Motivational closing
+  const systemPrompt = `You are an expert strength coach. Write concise, professional plain-text feedback. No HTML tags. No markdown symbols like # or **.
 
-Reference the athlete's actual numbers. Be specific, not generic. Use plain language.`;
+Strict format (use these exact section headers on their own line):
 
-  const userPrompt = `Session (${session.goal}, ${new Date(session.date).toLocaleDateString()}):
+Session Summary
+
+Progression
+- Up to 4 bullets, one per exercise, with exact loads/reps. 
+
+- Give your clear thoughts on progression for each exercise in a concise summary. 
+
+Next Session Targets
+- One bullet per exercise: Exercise: sets x rep-range @ load
+
+Rules:
+- Keep under 180 words.
+- No repeated advice for the same exercise.
+- Use plain language and exact numbers from the data.
+- Do NOT include warnings, volume balance, fatigue alerts, or imbalance commentary.
+- Output plain text only. No HTML, no markdown.`;
+
+  const userPrompt = `${systemPrompt}
+
+Session (${session.goal}, ${new Date(session.date).toLocaleDateString()}):
 ${JSON.stringify(session.exercises?.map((e: { exerciseName: string; sets: { weight: number; reps: number; rpe?: number; isFailure: boolean }[] }) => ({
   name: e.exerciseName,
   sets: e.sets.map(s => `${s.weight}×${s.reps}${s.rpe ? ` RPE ${s.rpe}` : ''}${s.isFailure ? ' (failure)' : ''}`),
@@ -125,23 +140,14 @@ ${JSON.stringify(session.exercises?.map((e: { exerciseName: string; sets: { weig
 Coach engine analysis:
 ${JSON.stringify(engineResult, null, 2)}`;
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt },
-      ],
-      max_tokens: 800,
-      temperature: 0.7,
-    }),
+  const ai = new GoogleGenAI({ apiKey });
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-lite',
+    contents: userPrompt,
   });
 
-  if (!res.ok) throw new Error(`OpenAI ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content ?? buildFallbackSummary(engineResult);
+  const text = response.text ?? '';
+  return text.trim() || buildFallbackSummary(engineResult);
 }
 
 // ─── Deterministic Fallback Summary ──────────────────────────────────────────
@@ -150,41 +156,67 @@ ${JSON.stringify(engineResult, null, 2)}`;
 function buildFallbackSummary(result: any): string {
   const lines: string[] = [];
 
-  lines.push('## Session Analysis\n');
+  type SummaryAdjustment = { exerciseName?: string; type?: string; description?: string };
+  type SummaryTarget = { exerciseName?: string; targetSets?: number; targetReps?: string; targetWeight?: number; targetUnit?: string };
+  type SummaryWarning = { severity?: 'high' | 'medium' | 'low'; type?: string; message?: string };
+  type SummaryVolume = { suggestion?: string };
 
-  if (result.progressionAdjustments?.length) {
-    lines.push('**Progression:**');
-    for (const adj of result.progressionAdjustments) {
+  const adjustmentPriority: Record<string, number> = {
+    deload: 0,
+    load_decrease: 1,
+    load_increase: 2,
+    rep_increase: 3,
+    remove_set: 4,
+    add_set: 5,
+  };
+
+  const adjustments: SummaryAdjustment[] = Array.isArray(result.progressionAdjustments)
+    ? result.progressionAdjustments
+    : [];
+  const targets: SummaryTarget[] = Array.isArray(result.nextSessionTargets)
+    ? result.nextSessionTargets
+    : [];
+  const warnings: SummaryWarning[] = Array.isArray(result.warnings) ? result.warnings : [];
+  const volume: SummaryVolume[] = Array.isArray(result.volumeBalance) ? result.volumeBalance : [];
+
+  // Keep a single best adjustment per exercise to avoid conflicting advice.
+  const bestByExercise = new Map<string, SummaryAdjustment>();
+  for (const adj of adjustments) {
+    const key = String(adj.exerciseName ?? '');
+    const current = bestByExercise.get(key);
+    const rank = adjustmentPriority[String(adj.type)] ?? 99;
+    const currentRank = current ? (adjustmentPriority[String(current.type)] ?? 99) : 99;
+    if (!current || rank < currentRank) {
+      bestByExercise.set(key, adj);
+    }
+  }
+
+  const topAdjustments = [...bestByExercise.values()].slice(0, 4);
+  // Keep for internal training/analytics usage even though we omit from user-facing summary.
+  void warnings;
+  void volume;
+
+  lines.push('SESSION SUMMARY');
+  lines.push('Strength session logged.');
+  lines.push('');
+
+  if (topAdjustments.length) {
+    lines.push('PROGRESSION');
+    for (const adj of topAdjustments) {
       lines.push(`- ${adj.exerciseName}: ${adj.description}`);
     }
     lines.push('');
   }
 
-  if (result.nextSessionTargets?.length) {
-    lines.push('**Next Session Targets:**');
-    for (const t of result.nextSessionTargets) {
-      lines.push(`- ${t.exerciseName}: ${t.targetSets} sets × ${t.targetReps} reps @ ${t.targetWeight}${t.targetUnit}${t.notes ? ` (${t.notes})` : ''}`);
+  if (targets.length) {
+    lines.push('NEXT SESSION TARGETS');
+    for (const t of targets) {
+      lines.push(`- ${t.exerciseName}: ${t.targetSets} x ${t.targetReps} @ ${t.targetWeight}${t.targetUnit}`);
     }
     lines.push('');
   }
 
-  if (result.warnings?.length) {
-    lines.push('**Warnings:**');
-    for (const w of result.warnings) {
-      const icon = w.severity === 'high' ? '🔴' : w.severity === 'medium' ? '🟡' : '🟢';
-      lines.push(`- ${icon} ${w.message}`);
-    }
-    lines.push('');
-  }
-
-  if (result.volumeBalance?.length) {
-    lines.push('**Volume Balance:**');
-    for (const v of result.volumeBalance) {
-      if (v.suggestion) lines.push(`- ${v.muscleGroup}: ${v.suggestion}`);
-    }
-  }
-
-  if (!lines.length) lines.push('Session looks solid — keep up the good work!');
+  lines.push('Execute with controlled reps and consistent form across working sets.');
 
   return lines.join('\n');
 }

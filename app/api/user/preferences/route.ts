@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, weightGoal, calorieGoal, workoutGoal, fastingGoal, age, gender, height, heightUnit, activityLevel } = body;
+    const { userId, weightGoal, calorieGoal, workoutGoal, fastingGoal, age, gender, height, heightUnit, activityLevel, experienceLevel, fitnessGoal, weightUnit, onboardingComplete, currentWeight } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -75,6 +75,11 @@ export async function POST(req: NextRequest) {
     if (height !== undefined) updateData.height = parseFloat(height);
     if (heightUnit !== undefined) updateData.heightUnit = heightUnit;
     if (activityLevel !== undefined) updateData.activityLevel = parseFloat(activityLevel);
+    if (experienceLevel !== undefined) updateData.experienceLevel = experienceLevel;
+    if (fitnessGoal !== undefined) updateData.fitnessGoal = fitnessGoal;
+    if (weightUnit !== undefined) updateData.weightUnit = weightUnit;
+    if (onboardingComplete !== undefined) updateData.onboardingComplete = onboardingComplete;
+    if (currentWeight !== undefined) updateData.currentWeight = parseFloat(currentWeight);
 
     await preferencesCollection.updateOne(
       { userId: user._id.toString() },

@@ -20,6 +20,7 @@ interface AuthUser {
   id: string;
   email: string;
   name?: string;
+  onboardingComplete?: boolean;
 }
 
 type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile' | 'settings';
@@ -87,6 +88,12 @@ export default function Home() {
     setRefreshKey(prev => prev + 1);
   };
 
+  useEffect(() => {
+    if (!loading && currentUser && !currentUser.onboardingComplete) {
+      window.location.href = '/onboarding';
+    }
+  }, [loading, currentUser]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -98,6 +105,14 @@ export default function Home() {
   // If not logged in, show landing page
   if (!currentUser) {
     return <LandingPage />;
+  }
+
+  if (!currentUser.onboardingComplete) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-xl font-semibold text-gray-300">Redirecting to onboarding...</div>
+      </div>
+    );
   }
 
   // Calculate active goals vs total

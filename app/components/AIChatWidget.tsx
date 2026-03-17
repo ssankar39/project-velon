@@ -31,6 +31,36 @@ export default function AIChatWidget() {
     if (open) inputRef.current?.focus();
   }, [open]);
 
+  // Listen for coach feedback context events from the workout module
+  useEffect(() => {
+    const handleCoachContext = async (e: Event) => {
+      const { context } = (e as CustomEvent<{ context: string }>).detail;
+      setOpen(true);
+      const userMsg: ChatMessage = { role: 'user', content: context };
+      setMessages(prev => [...prev, userMsg]);
+      setLoading(true);
+      try {
+        const userId = getUserId();
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: context, userId, includeWorkoutData: true }),
+        });
+        const data = await res.json();
+        const reply = res.ok
+          ? (data.reply ?? 'Sorry, something went wrong.')
+          : (data.error ?? 'Something went wrong.');
+        setMessages(prev => [...prev, { role: 'assistant', content: reply }]);
+      } catch {
+        setMessages(prev => [...prev, { role: 'assistant', content: 'Network error. Please try again.' }]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    window.addEventListener('coach-context', handleCoachContext);
+    return () => window.removeEventListener('coach-context', handleCoachContext);
+  }, []);
+
   const getUserId = () => {
     try {
       const stored = localStorage.getItem('user');
@@ -160,7 +190,7 @@ export default function AIChatWidget() {
 
           {/* Input */}
           <div className="px-3 py-3 border-t border-white/10">
-            <div className="flex items-center gap-2 bg-white/5 rounded-xl px-3 py-2 border border-white/10 focus-within:border-purple-500/50 transition-colors">
+            <div className="relative">
               <input
                 ref={inputRef}
                 type="text"
@@ -169,12 +199,12 @@ export default function AIChatWidget() {
                 onKeyDown={handleKeyDown}
                 placeholder="Ask your coach..."
                 disabled={loading}
-                className="flex-1 bg-transparent text-sm text-white placeholder-gray-500 outline-none"
+                className="w-full pl-3 pr-10 py-2 glass-light rounded-lg text-white border border-white/10 focus:border-purple-500 focus:outline-none placeholder-gray-500 text-sm"
               />
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || loading}
-                className="text-purple-400 hover:text-purple-300 disabled:text-gray-600 transition-colors p-1"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-purple-400 hover:text-purple-300 disabled:text-gray-600 transition-colors p-1"
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />
