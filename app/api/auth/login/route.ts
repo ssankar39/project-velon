@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
-import bcrypt from 'bcryptjs';
+import bcrypt from 'bcryptjs';  // For password hashing
 
 export async function POST(req: NextRequest) {
   try {
@@ -41,8 +41,13 @@ export async function POST(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password: _password, ...userWithoutPassword } = userData;
 
+    // Fetch user preferences to check onboarding status
+    const preferencesCollection = await getCollection('UserPreferences');
+    const preferences = await preferencesCollection.findOne({ userId: userData._id.toString() });
+    const onboardingComplete = preferences?.onboardingComplete ?? false;
+
     return NextResponse.json(
-      { message: 'Login successful', user: { id: userData._id.toString(), ...userWithoutPassword } },
+      { message: 'Login successful', user: { id: userData._id.toString(), ...userWithoutPassword, onboardingComplete } },
       { status: 200 }
     );
   } catch (error) {

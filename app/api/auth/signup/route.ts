@@ -48,8 +48,17 @@ export async function POST(req: NextRequest) {
 
     const userId = result.insertedId.toString();
 
+    // Create initial preferences with onboarding incomplete
+    const preferencesCollection = await getCollection('UserPreferences');
+    await preferencesCollection.insertOne({
+      userId,
+      onboardingComplete: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
     return NextResponse.json(
-      { message: 'User created successfully', user: { id: userId, email, name } },
+      { message: 'User created successfully', user: { id: userId, email, name, onboardingComplete: false } },
       { status: 201 }
     );
   } catch (error) {

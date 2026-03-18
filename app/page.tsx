@@ -52,6 +52,12 @@ export default function Home() {
       try {
         const user = JSON.parse(storedUser) as AuthUser;
         setCurrentUser(user);
+        
+        // If user hasn't completed onboarding, redirect immediately
+        if (!user.onboardingComplete) {
+          window.location.href = '/onboarding';
+          return;
+        }
       } catch (e) {
         console.error('Failed to parse stored user:', e);
         localStorage.removeItem('user');

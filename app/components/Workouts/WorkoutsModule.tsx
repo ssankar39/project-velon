@@ -6,7 +6,7 @@ import {
   Plus, ChevronDown, ChevronUp, Dumbbell, Brain,
   BookOpen, History, Save, Play, Check,
   AlertTriangle, ArrowUp, ArrowDown, Minus, Upload,
-  Info, Star, Zap, Target, Clock, RefreshCw, MessageCircle,
+  Info, Star, Zap, Target, Clock, Edit, RefreshCw, MessageCircle,
 } from 'lucide-react';
 import { DatePicker } from '../DatePicker';
 
@@ -524,12 +524,20 @@ function ExerciseSearchPopup({ user, onSelect, onClose }: {
 function SessionHistory({ user }: { user: AuthUser | null }) {
   const [sessions, setSessions] = useState<WorkoutSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<WorkoutSession | null>(null);
   const [coachLoading, setCoachLoading] = useState<string | null>(null);
   const [savingTemplateId, setSavingTemplateId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'date' | 'recent'>('recent');
+  const [weeksToShow, setWeeksToShow] = useState(12); // Start with 12 weeks, can load more
+  const [editingSession, setEditingSession] = useState<WorkoutSession | null>(null);
+  const [editExercises, setEditExercises] = useState<PerformedExercise[]>([]);
+  const [editNotes, setEditNotes] = useState('');
+  const [editDuration, setEditDuration] = useState<number | null>(null);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editExpandedEx, setEditExpandedEx] = useState<number | null>(null);
 
   const fetchSessions = useCallback(async () => {
     if (!user) return;
@@ -537,13 +545,16 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
     try {
       const params = viewMode === 'date'
         ? `userId=${encodeURIComponent(user.email)}&date=${selectedDate.toISOString().split('T')[0]}`
-        : `userId=${encodeURIComponent(user.email)}&weeks=4&limit=20`;
+        : `userId=${encodeURIComponent(user.email)}&weeks=${weeksToShow}&limit=100`;
       const res = await fetch(`/api/workout-sessions?${params}`);
       const data = await res.json();
       setSessions(Array.isArray(data) ? data : []);
     } catch { setSessions([]); }
-    finally { setLoading(false); }
-  }, [user, selectedDate, viewMode]);
+    finally { 
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [user, selectedDate, viewMode, weeksToShow]);
 
   useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
@@ -574,6 +585,93 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
       await fetch(`/api/workout-sessions/${id}`, { method: 'DELETE' });
       setSessions(prev => prev.filter(s => s._id !== id));
     } catch { /* skip */ }
+  };
+
+  const startEditing = (session: WorkoutSession) => {
+    setEditingSession(session);
+    setEditExercises(JSON.parse(JSON.stringify(session.exercises)));
+    setEditNotes(session.notes || '');
+    setEditDuration(session.duration || null);
+    setEditExpandedEx(0);
+  };
+
+  const cancelEditing = () => {
+    setEditingSession(null);
+    setEditExercises([]);
+    setEditNotes('');
+    setEditDuration(null);
+    setEditExpandedEx(null);
+  };
+
+  const updateEditSet = (exIdx: number, setIdx: number, field: string, value: number | boolean) => {
+    setEditExercises(prev => prev.map((e, i) => {
+      if (i !== exIdx) return e;
+      return {
+        ...e,
+        sets: e.sets.map((s, j) => j === setIdx ? { ...s, [field]: value } : s),
+      };
+    }));
+  };
+
+  const addEditSet = (exIdx: number) => {
+    setEditExercises(prev => prev.map((e, i) => {
+      if (i !== exIdx) return e;
+      const prevSet = e.sets[e.sets.length - 1];
+      return {
+        ...e,
+        sets: [...e.sets, {
+          setNumber: e.sets.length + 1,
+          weight: prevSet?.weight ?? 0,
+          reps: prevSet?.reps ?? 0,
+          unit: prevSet?.unit ?? 'lbs',
+          isFailure: false,
+        }],
+      };
+    }));
+  };
+
+  const removeEditSet = (exIdx: number, setIdx: number) => {
+    setEditExercises(prev => prev.map((e, i) => {
+      if (i !== exIdx) return e;
+      return { ...e, sets: e.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setNumber: j + 1 })) };
+    }));
+  };
+
+  const removeEditExercise = (idx: number) => {
+    setEditExercises(prev => prev.filter((_, i) => i !== idx).map((e, i) => ({ ...e, orderIndex: i })));
+    if (editExpandedEx === idx) setEditExpandedEx(null);
+  };
+
+  const saveEditSession = async () => {
+    if (!editingSession || !user) return;
+    setEditSaving(true);
+    try {
+      const res = await fetch(`/api/workout-sessions/${editingSession._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          exercises: editExercises,
+          notes: editNotes,
+          duration: editDuration ?? undefined,
+        }),
+      });
+      if (res.ok) {
+        setSessions(prev => prev.map(s => s._id === editingSession._id
+          ? { ...s, exercises: editExercises, notes: editNotes, duration: editDuration ?? undefined, updatedAt: new Date().toISOString() }
+          : s,
+        ));
+        if (selectedSession?._id === editingSession._id) {
+          setSelectedSession(prev => prev && { ...prev, exercises: editExercises, notes: editNotes, duration: editDuration ?? undefined });
+        }
+        cancelEditing();
+        alert('Session updated successfully!');
+      }
+    } catch (e) {
+      console.error('Save error:', e);
+      alert('Failed to save changes');
+    } finally {
+      setEditSaving(false);
+    }
   };
 
   const saveSessionAsTemplate = async (session: WorkoutSession) => {
@@ -680,9 +778,10 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
           <p className="text-gray-400">No sessions found. Start logging workouts!</p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {sessions.map(session => (
-            <div key={session._id} className="glass rounded-xl overflow-hidden">
+        <>
+          <div className="space-y-3">
+            {sessions.map(session => (
+              <div key={session._id} className="glass rounded-xl overflow-hidden">
               {/* Session header */}
               <button onClick={() => setExpanded(expanded === session._id ? null : session._id)}
                 className="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors">
@@ -703,6 +802,10 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
                 </div>
                 <div className="flex items-center gap-2">
                   {session.coachFeedback && <Brain className="w-4 h-4 text-green-400" />}
+                  <button onClick={e => { e.stopPropagation(); startEditing(session); }}
+                    className="flex items-center justify-center text-blue-400/60 hover:text-blue-400 p-1" title="Edit session">
+                    <Edit className="w-4 h-4" />
+                  </button>
                   <button onClick={e => { e.stopPropagation(); setSelectedSession(session); }}
                     className="flex items-center justify-center text-purple-400/60 hover:text-purple-400 p-1" title="View details">
                     <Info className="w-4 h-4" />
@@ -776,7 +879,22 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
               )}
             </div>
           ))}
-        </div>
+          </div>
+          
+          {/* Load More Older Workouts */}
+          {viewMode === 'recent' && sessions.length > 0 && (
+            <button
+              onClick={() => {
+                setLoadingMore(true);
+                setWeeksToShow(prev => prev + 12);
+              }}
+              disabled={loadingMore}
+              className="w-full mt-4 py-3 rounded-lg border-2 border-dashed border-white/20 text-gray-300 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+            >
+              {loadingMore ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</> : <>⬇ Load Older Workouts</>}
+            </button>
+          )}
+        </>
       )}
 
       {/* ── Session Detail Modal ── */}
@@ -918,6 +1036,167 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
                     : <><Brain className="w-4 h-4" /> Get AI Coach Feedback</>}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Edit Session Modal ── */}
+      {editingSession && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn"
+          onClick={cancelEditing}
+        >
+          <div
+            className="glass rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col border border-blue-500/30 shadow-2xl shadow-blue-500/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <RefreshCw className="w-5 h-5 text-blue-400" />
+                <h2 className="text-sm tracking-widest text-blue-400 font-medium uppercase">
+                  Edit Session
+                </h2>
+              </div>
+              <button
+                onClick={cancelEditing}
+                className="flex items-center justify-center text-gray-400 hover:text-white transition-colors p-1 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="overflow-y-auto flex-1 px-6 py-6 space-y-4">
+              {/* Duration & Notes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-400 mb-2">Duration (minutes)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editDuration ?? ''}
+                    onChange={(e) => setEditDuration(e.target.value ? parseInt(e.target.value) : null)}
+                    placeholder="—"
+                    className="w-full px-3 py-2 glass-light rounded text-white border border-white/10 focus:border-blue-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-400 mb-2">Session Notes</label>
+                <textarea
+                  value={editNotes}
+                  onChange={(e) => setEditNotes(e.target.value)}
+                  placeholder="Any notes about this session..."
+                  className="w-full px-3 py-2 glass-light rounded text-white border border-white/10 focus:border-blue-500 focus:outline-none resize-none"
+                  rows={2}
+                />
+              </div>
+
+              {/* Exercises */}
+              <div>
+                <p className="text-xs font-semibold text-blue-400 mb-3">Exercises</p>
+                <div className="space-y-3">
+                  {editExercises.map((ex, exIdx) => (
+                    <div key={exIdx} className="glass rounded-xl overflow-hidden">
+                      {/* Exercise header */}
+                      <button
+                        onClick={() => setEditExpandedEx(editExpandedEx === exIdx ? null : exIdx)}
+                        className="w-full flex items-center justify-between p-4 text-left hover:bg-white/5 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-blue-400 bg-blue-500/20 w-6 h-6 rounded-full flex items-center justify-center">
+                            {exIdx + 1}
+                          </span>
+                          <div>
+                            <p className="font-semibold text-white capitalize">{ex.exerciseName}</p>
+                            <p className="text-xs text-gray-400">{ex.sets.length} set{ex.sets.length !== 1 ? 's' : ''}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={e => { e.stopPropagation(); removeEditExercise(exIdx); }}
+                            className="flex items-center justify-center text-red-400/60 hover:text-red-400 p-1 transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          {editExpandedEx === exIdx ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                        </div>
+                      </button>
+
+                      {/* Sets editor */}
+                      {editExpandedEx === exIdx && (
+                        <div className="px-4 pb-4">
+                          {/* Header row */}
+                          <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-400 mb-2 px-1">
+                            <span className="col-span-1">Set</span>
+                            <span className="col-span-3">Weight</span>
+                            <span className="col-span-2">Reps</span>
+                            <span className="col-span-2">RPE</span>
+                            <span className="col-span-2">Fail?</span>
+                            <span className="col-span-2"></span>
+                          </div>
+                          {ex.sets.map((set, sIdx) => (
+                            <div key={sIdx} className="grid grid-cols-12 gap-2 items-center mb-2">
+                              <span className="col-span-1 text-sm text-gray-400 text-center">{set.setNumber}</span>
+                              <div className="col-span-3">
+                                <input type="number" min="0" step="2.5" value={set.weight || ''} placeholder="0"
+                                  onChange={e => updateEditSet(exIdx, sIdx, 'weight', parseFloat(e.target.value) || 0)}
+                                  className="w-full px-2 py-1.5 glass-light rounded text-white text-sm border border-white/10 focus:border-blue-500 focus:outline-none" />
+                              </div>
+                              <div className="col-span-2">
+                                <input type="number" min="0" value={set.reps || ''} placeholder="0"
+                                  onChange={e => updateEditSet(exIdx, sIdx, 'reps', parseInt(e.target.value) || 0)}
+                                  className="w-full px-2 py-1.5 glass-light rounded text-white text-sm border border-white/10 focus:border-blue-500 focus:outline-none" />
+                              </div>
+                              <div className="col-span-2">
+                                <input type="number" min="1" max="10" step="0.5" value={set.rpe || ''} placeholder="—"
+                                  onChange={e => updateEditSet(exIdx, sIdx, 'rpe', parseFloat(e.target.value) || 0)}
+                                  className="w-full px-2 py-1.5 glass-light rounded text-white text-sm border border-white/10 focus:border-blue-500 focus:outline-none" />
+                              </div>
+                              <div className="col-span-2 flex justify-center">
+                                <button onClick={() => updateEditSet(exIdx, sIdx, 'isFailure', !set.isFailure)}
+                                  className={`w-6 h-6 rounded border flex items-center justify-center transition-colors
+                                    ${set.isFailure ? 'bg-red-500/30 border-red-500 text-red-400' : 'border-white/20 text-transparent hover:border-white/40'}`}>
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </div>
+                              <div className="col-span-2 flex justify-end">
+                                <button onClick={() => removeEditSet(exIdx, sIdx)}
+                                  className="flex items-center justify-center text-gray-500 hover:text-red-400 p-1 transition-colors"
+                                  disabled={ex.sets.length <= 1}>
+                                  <Minus className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                          <button onClick={() => addEditSet(exIdx)}
+                            className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 mt-2 transition-colors">
+                            <Plus className="w-3 h-3" /> Add Set
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-white/10 flex gap-2">
+              <button
+                onClick={cancelEditing}
+                className="flex-1 py-2.5 rounded-lg border border-white/10 text-white hover:bg-white/5 transition-colors font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveEditSession}
+                disabled={editSaving}
+                className="flex-1 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+              >
+                {editSaving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : <><Check className="w-4 h-4" /> Save Changes</>}
+              </button>
             </div>
           </div>
         </div>
