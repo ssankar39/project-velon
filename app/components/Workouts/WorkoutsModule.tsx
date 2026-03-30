@@ -93,6 +93,13 @@ interface CoachFeedback {
 
 interface AuthUser { id: string; email: string; name?: string; }
 
+interface ParsedWorkoutExercise {
+  exerciseId: string;
+  exerciseName: string;
+  notes?: string;
+  sets: SetEntry[];
+}
+
 type Tab = 'log' | 'history' | 'library';
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -158,7 +165,10 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [textEntryOpen, setTextEntryOpen] = useState(false);
+  const [exerciseTextInput, setExerciseTextInput] = useState('');
+  const [parsingInput, setParsingInput] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
   const [expandedEx, setExpandedEx] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
@@ -202,18 +212,66 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
     setExpandedEx(0);
   };
 
-  const addExercise = (ex: ExerciseSearch) => {
-    setExercises(prev => [
-      ...prev,
-      {
-        exerciseId: ex.id || ex._id,
-        exerciseName: ex.name,
-        orderIndex: prev.length,
-        sets: [{ setNumber: 1, weight: 0, reps: 0, unit: weightUnit, isFailure: false }],
-      },
-    ]);
-    setSearchOpen(false);
-    setExpandedEx(exercises.length);
+  const addExercisesFromText = async () => {
+    if (!exerciseTextInput.trim() || !user) return;
+
+    setParsingInput(true);
+    setParseError(null);
+    try {
+      const res = await fetch('/api/workout-sessions/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.email,
+          rawInput: exerciseTextInput,
+          unit: weightUnit,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setParseError(data?.error || 'Could not parse exercise input.');
+        return;
+      }
+
+      const parsedExercises = Array.isArray(data?.exercises) ? data.exercises as ParsedWorkoutExercise[] : [];
+      if (!parsedExercises.length) {
+        setParseError('No exercises were detected.');
+        return;
+      }
+
+      setExercises(prev => {
+        const base = prev.length;
+        return [
+          ...prev,
+          ...parsedExercises.map((ex, index) => ({
+            exerciseId: ex.exerciseId,
+            exerciseName: ex.exerciseName,
+            notes: ex.notes,
+            orderIndex: base + index,
+            sets: ex.sets?.length
+              ? ex.sets.map((set, setIndex) => ({
+                setNumber: setIndex + 1,
+                weight: Number(set.weight) || 0,
+                reps: Number(set.reps) || 0,
+                unit: weightUnit,
+                isFailure: Boolean(set.isFailure),
+                rpe: set.rpe,
+                restTime: set.restTime,
+              }))
+              : [{ setNumber: 1, weight: 0, reps: 0, unit: weightUnit, isFailure: false }],
+          })),
+        ];
+      });
+
+      setExpandedEx(exercises.length);
+      setExerciseTextInput('');
+      setTextEntryOpen(false);
+    } catch {
+      setParseError('Failed to parse text input. Please try again.');
+    } finally {
+      setParsingInput(false);
+    }
   };
 
   const removeExercise = (idx: number) => {
@@ -327,6 +385,9 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
               setSelectedTemplate('');
               setExercises([]);
               setExpandedEx(null);
+              setTextEntryOpen(false);
+              setExerciseTextInput('');
+              setParseError(null);
             }}
             className="px-3 py-2.5 rounded-lg border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
           >
@@ -417,15 +478,49 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
         ))}
       </div>
 
-      {/* Add exercise / Search */}
-      {searchOpen ? (
-        <ExerciseSearchPopup
-          user={user}
-          onSelect={addExercise}
-          onClose={() => setSearchOpen(false)}
-        />
+      {/* Add exercise from text */}
+      {textEntryOpen ? (
+        <div className="glass rounded-xl p-4 space-y-3">
+          <p className="text-xs text-gray-400">
+            Paste one exercise per line. Example: Barbell Chest Press - 65 x 5, 95 x 4, 105 x 6
+          </p>
+          <textarea
+            value={exerciseTextInput}
+            onChange={e => setExerciseTextInput(e.target.value)}
+            rows={6}
+            placeholder={[
+              'Barbell Chest Press - 65 x 5, 95 x 4, 105 x 6, 95 x 10',
+              'Shoulder Press - 50 x 10, 45 x 8, 40 x 9',
+              'Chest Flyes - 8(90), 9(85), 8(80)',
+            ].join('\n')}
+            className="w-full px-3 py-2 glass-light rounded text-white border border-white/10 focus:border-purple-500 focus:outline-none resize-y"
+          />
+          {parseError && <p className="text-sm text-red-400">{parseError}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setTextEntryOpen(false);
+                setParseError(null);
+              }}
+              className="flex-1 py-2.5 rounded-lg border border-white/10 text-gray-200 hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={addExercisesFromText}
+              disabled={parsingInput || !exerciseTextInput.trim()}
+              className="flex-1 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {parsingInput
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Formatting...</>
+                : <><Check className="w-4 h-4" /> Submit Exercises</>}
+            </button>
+          </div>
+        </div>
       ) : (
-        <button onClick={() => setSearchOpen(true)}
+        <button onClick={() => setTextEntryOpen(true)}
           className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2">
           <Plus className="w-5 h-5" /> Add Exercise
         </button>
@@ -445,70 +540,6 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
             : <><Save className="w-4 h-4" /> Save Session</>}
         </button>
       )}
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// EXERCISE SEARCH POPUP (used in SessionLogger + TemplateManager)
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function ExerciseSearchPopup({ user, onSelect, onClose }: {
-  user: AuthUser | null;
-  onSelect: (ex: ExerciseSearch) => void;
-  onClose: () => void;
-}) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ExerciseSearch[]>([]);
-  const [searching, setSearching] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => { inputRef.current?.focus(); }, []);
-
-  const doSearch = useCallback(async (q: string) => {
-    if (q.trim().length < 2) { setResults([]); return; }
-    setSearching(true);
-    try {
-      const url = `/api/exercises/search?q=${encodeURIComponent(q)}${user ? `&userId=${encodeURIComponent(user.email)}` : ''}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setResults(data ?? []);
-    } catch { setResults([]); }
-    finally { setSearching(false); }
-  }, [user]);
-
-  useEffect(() => {
-    const t = setTimeout(() => doSearch(query), 300);
-    return () => clearTimeout(t);
-  }, [query, doSearch]);
-
-  return (
-    <div className="glass rounded-xl p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Search className="w-4 h-4 text-gray-400" />
-        <input ref={inputRef} type="text" placeholder="Search exercises..."
-          value={query} onChange={e => setQuery(e.target.value)}
-          className="flex-1 bg-transparent text-white"
-        />
-        <button onClick={onClose} className="flex items-center justify-center text-gray-400 hover:text-white"><X className="w-4 h-4" /></button>
-      </div>
-      {searching && <p className="text-xs text-gray-400 flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> Searching...</p>}
-      <div className="max-h-60 overflow-y-auto space-y-1">
-        {results.map(ex => (
-          <button key={ex.id} onClick={() => onSelect(ex)}
-            className="w-full text-left p-2.5 rounded-lg hover:bg-white/10 transition-colors">
-            <p className="font-medium text-white capitalize text-sm">{ex.name}</p>
-            <div className="flex gap-1.5 mt-1 flex-wrap">
-              {ex.bodyPart && <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 capitalize">{ex.bodyPart}</span>}
-              {ex.equipment && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300 capitalize">{Array.isArray(ex.equipment) ? ex.equipment.join(', ').replace(/_/g, ' ') : String(ex.equipment).replace(/_/g, ' ')}</span>}
-              {ex.movementPattern && <span className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 capitalize">{ex.movementPattern}</span>}
-            </div>
-          </button>
-        ))}
-        {!searching && query.length >= 2 && results.length === 0 && (
-          <p className="text-xs text-gray-500 py-2 text-center">No exercises found</p>
-        )}
-      </div>
     </div>
   );
 }
@@ -538,6 +569,10 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
   const [editDuration, setEditDuration] = useState<number | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editExpandedEx, setEditExpandedEx] = useState<number | null>(null);
+  const [editTextEntryOpen, setEditTextEntryOpen] = useState(false);
+  const [editExerciseTextInput, setEditExerciseTextInput] = useState('');
+  const [editParsingInput, setEditParsingInput] = useState(false);
+  const [editParseError, setEditParseError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     if (!user) return;
@@ -593,6 +628,9 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
     setEditNotes(session.notes || '');
     setEditDuration(session.duration || null);
     setEditExpandedEx(0);
+    setEditTextEntryOpen(false);
+    setEditExerciseTextInput('');
+    setEditParseError(null);
   };
 
   const cancelEditing = () => {
@@ -601,6 +639,9 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
     setEditNotes('');
     setEditDuration(null);
     setEditExpandedEx(null);
+    setEditTextEntryOpen(false);
+    setEditExerciseTextInput('');
+    setEditParseError(null);
   };
 
   const updateEditSet = (exIdx: number, setIdx: number, field: string, value: number | boolean) => {
@@ -642,6 +683,69 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
     if (editExpandedEx === idx) setEditExpandedEx(null);
   };
 
+  const addEditExercisesFromText = async () => {
+    if (!editExerciseTextInput.trim() || !user) return;
+
+    const inferredUnit = editExercises[0]?.sets?.[0]?.unit ?? 'lbs';
+    setEditParsingInput(true);
+    setEditParseError(null);
+
+    try {
+      const res = await fetch('/api/workout-sessions/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.email,
+          rawInput: editExerciseTextInput,
+          unit: inferredUnit,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEditParseError(data?.error || 'Could not parse exercise input.');
+        return;
+      }
+
+      const parsedExercises = Array.isArray(data?.exercises) ? data.exercises as ParsedWorkoutExercise[] : [];
+      if (!parsedExercises.length) {
+        setEditParseError('No exercises were detected.');
+        return;
+      }
+
+      setEditExercises(prev => {
+        const base = prev.length;
+        return [
+          ...prev,
+          ...parsedExercises.map((ex, index) => ({
+            exerciseId: ex.exerciseId,
+            exerciseName: ex.exerciseName,
+            notes: ex.notes,
+            orderIndex: base + index,
+            sets: ex.sets?.length
+              ? ex.sets.map((set, setIndex) => ({
+                setNumber: setIndex + 1,
+                weight: Number(set.weight) || 0,
+                reps: Number(set.reps) || 0,
+                unit: inferredUnit,
+                isFailure: Boolean(set.isFailure),
+                rpe: set.rpe,
+                restTime: set.restTime,
+              }))
+              : [{ setNumber: 1, weight: 0, reps: 0, unit: inferredUnit, isFailure: false }],
+          })),
+        ];
+      });
+
+      setEditExerciseTextInput('');
+      setEditTextEntryOpen(false);
+    } catch {
+      setEditParseError('Failed to parse text input. Please try again.');
+    } finally {
+      setEditParsingInput(false);
+    }
+  };
+
   const saveEditSession = async () => {
     if (!editingSession || !user) return;
     setEditSaving(true);
@@ -679,8 +783,8 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
 
     const defaultName = session.templateName
       || `${session.goal.charAt(0).toUpperCase()}${session.goal.slice(1)} Day`;
-    const name = window.prompt('Template name', defaultName)?.trim();
-    if (!name) return;
+    let templateName = window.prompt('Template name', defaultName)?.trim();
+    if (!templateName) return;
 
     setSavingTemplateId(session._id);
     try {
@@ -700,43 +804,86 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
         };
       });
 
-      const res = await fetch('/api/workout-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.email,
-          name,
-          goal: session.goal,
-          exercises,
-        }),
-      });
+      let createdTemplate: { _id?: string; name?: string; overridden?: boolean } | null = null;
+      while (!createdTemplate) {
+        const res = await fetch('/api/workout-templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: user.email,
+            name: templateName,
+            goal: session.goal,
+            exercises,
+          }),
+        });
 
-      if (!res.ok) {
+        if (res.ok) {
+          createdTemplate = await res.json();
+          break;
+        }
+
         const errorData = await res.json().catch(() => ({}));
+        if (res.status === 409 && errorData?.clash?.name) {
+          const shouldOverride = window.confirm(
+            `A similar template already exists (${errorData.clash.name}).\n\nPress OK to override it, or Cancel to enter a different name.`,
+          );
+
+          if (shouldOverride) {
+            const overrideRes = await fetch('/api/workout-templates', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.email,
+                name: templateName,
+                goal: session.goal,
+                exercises,
+                overrideExisting: true,
+              }),
+            });
+
+            if (!overrideRes.ok) {
+              const overrideError = await overrideRes.json().catch(() => ({}));
+              throw new Error(overrideError?.error || 'Failed to override template');
+            }
+
+            createdTemplate = await overrideRes.json();
+            break;
+          }
+
+          const renamed: string | undefined = window.prompt('Enter a different template name', `${templateName} v2`)?.trim();
+          if (!renamed) return;
+          templateName = renamed;
+          continue;
+        }
+
         throw new Error(errorData?.error || 'Failed to save template');
       }
 
-      const createdTemplate = await res.json();
+      const finalTemplateName = createdTemplate?.name || templateName;
 
       await fetch(`/api/workout-sessions/${session._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           templateId: createdTemplate?._id ?? null,
-          templateName: name,
+          templateName: finalTemplateName,
         }),
       });
 
       setSessions(prev => prev.map(s => s._id === session._id
-        ? { ...s, templateId: createdTemplate?._id ?? s.templateId, templateName: name }
+        ? { ...s, templateId: createdTemplate?._id ?? s.templateId, templateName: finalTemplateName }
         : s,
       ));
       setSelectedSession(prev => prev && prev._id === session._id
-        ? { ...prev, templateId: createdTemplate?._id ?? prev.templateId, templateName: name }
+        ? { ...prev, templateId: createdTemplate?._id ?? prev.templateId, templateName: finalTemplateName }
         : prev,
       );
 
-      alert(`Saved template: ${name}`);
+      if (createdTemplate?.overridden) {
+        alert(`Overrode existing template: ${finalTemplateName}`);
+      } else {
+        alert(`Saved template: ${finalTemplateName}`);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save template';
       alert(message);
@@ -1097,7 +1244,57 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
 
               {/* Exercises */}
               <div>
-                <p className="text-xs font-semibold text-blue-400 mb-3">Exercises</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-blue-400">Exercises</p>
+                  {!editTextEntryOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setEditTextEntryOpen(true)}
+                      className="text-xs px-2.5 py-1 rounded border border-blue-400/40 text-blue-300 hover:bg-blue-500/10 transition-colors"
+                    >
+                      Add From Text
+                    </button>
+                  )}
+                </div>
+
+                {editTextEntryOpen && (
+                  <div className="glass rounded-xl p-3 mb-3 space-y-2">
+                    <textarea
+                      value={editExerciseTextInput}
+                      onChange={(e) => setEditExerciseTextInput(e.target.value)}
+                      rows={5}
+                      placeholder={[
+                        'Barbell Chest Press - 65 x 5, 95 x 4, 105 x 6',
+                        'Lateral Raises (25) - 10,9,8',
+                      ].join('\n')}
+                      className="w-full px-3 py-2 glass-light rounded text-white border border-white/10 focus:border-blue-500 focus:outline-none resize-y"
+                    />
+                    {editParseError && <p className="text-sm text-red-400">{editParseError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditTextEntryOpen(false);
+                          setEditParseError(null);
+                        }}
+                        className="flex-1 py-2 rounded-lg border border-white/10 text-gray-200 hover:bg-white/10 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addEditExercisesFromText}
+                        disabled={editParsingInput || !editExerciseTextInput.trim()}
+                        className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                      >
+                        {editParsingInput
+                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Formatting...</>
+                          : <><Check className="w-4 h-4" /> Submit Exercises</>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {editExercises.map((ex, exIdx) => (
                     <div key={exIdx} className="glass rounded-xl overflow-hidden">

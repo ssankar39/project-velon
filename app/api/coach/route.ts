@@ -108,11 +108,12 @@ async function generateAISummary(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   engineResult: any,
 ): Promise<string> {
-  const systemPrompt = `You are an expert strength coach. Write concise, professional plain-text feedback. No HTML tags. No markdown symbols like # or **.
+  const systemPrompt = `You are an expert powerlifting/strength coach. Write concise, professional plain-text feedback on the session. No HTML tags. No markdown symbols like # or **.
 
 Strict format (use these exact section headers on their own line):
 
 Session Summary
+- Give your overall thoughts on this week's session in 1-2 sentences.
 
 Progression
 - Up to 4 bullets, one per exercise, with exact loads/reps. 
@@ -121,6 +122,7 @@ Progression
 
 Next Session Targets
 - One bullet per exercise: Exercise: sets x rep-range @ load
+
 
 Rules:
 - Keep under 180 words.

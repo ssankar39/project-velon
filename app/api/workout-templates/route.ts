@@ -1,6 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 
+function normalizeTemplateName(name: string): string {
+  const simplified = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return simplified
+    .replace(/\b(day|days|workout|workouts|template|templates|session|sessions|training)\b/g, ' ')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+function hasTemplateNameClash(a: string, b: string): boolean {
+  const aTrim = a.trim().toLowerCase();
+  const bTrim = b.trim().toLowerCase();
+  if (aTrim === bTrim) return true;
+
+  const aNorm = normalizeTemplateName(aTrim);
+  const bNorm = normalizeTemplateName(bTrim);
+  if (!aNorm || !bNorm) return false;
+
+  return aNorm === bNorm;
+}
+
 /** GET /api/workout-templates – list templates for a user */
 export async function GET(req: NextRequest) {
   try {
@@ -22,7 +47,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { userId, name, goal, exercises } = body;
+    const { userId, name, goal, exercises, overrideExisting } = body;
 
     if (!userId || !name || !goal) {
       return NextResponse.json({ error: 'Missing required fields (userId, name, goal)' }, { status: 400 });
@@ -30,10 +55,42 @@ export async function POST(req: NextRequest) {
 
     const col = await getCollection('WorkoutTemplate');
     const now = new Date();
+    const trimmedName = String(name).trim();
+
+    const existingTemplates = await col
+      .find({ userId })
+      .project({ _id: 1, name: 1 })
+      .toArray() as Array<{ _id: { toString(): string }; name?: string }>;
+
+    const clash = existingTemplates.find(t => t.name && hasTemplateNameClash(trimmedName, t.name));
+
+    if (clash && !overrideExisting) {
+      return NextResponse.json({
+        error: 'Template name clashes with an existing template',
+        clash: {
+          _id: clash._id.toString(),
+          name: clash.name,
+        },
+        options: ['rename', 'override'],
+      }, { status: 409 });
+    }
+
+    if (clash && overrideExisting) {
+      const updatedDoc = {
+        userId,
+        name: trimmedName,
+        goal,
+        exercises: exercises ?? [],
+        updatedAt: now,
+      };
+
+      await col.updateOne({ _id: clash._id }, { $set: updatedDoc });
+      return NextResponse.json({ _id: clash._id.toString(), ...updatedDoc, overridden: true }, { status: 200 });
+    }
 
     const doc = {
       userId,
-      name,
+      name: trimmedName,
       goal,
       exercises: exercises ?? [],
       createdAt: now,
