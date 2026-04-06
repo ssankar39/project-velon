@@ -93,6 +93,13 @@ interface CoachFeedback {
 
 interface AuthUser { id: string; email: string; name?: string; }
 
+interface ParsedWorkoutExercise {
+  exerciseId: string;
+  exerciseName: string;
+  notes?: string;
+  sets: SetEntry[];
+}
+
 type Tab = 'log' | 'history' | 'library';
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -158,10 +165,14 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [textEntryOpen, setTextEntryOpen] = useState(false);
+  const [exerciseTextInput, setExerciseTextInput] = useState('');
+  const [parsingInput, setParsingInput] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
   const [expandedEx, setExpandedEx] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
+  const [searchOpen, setSearchOpen] = useState(false);
 
   // Load user preferences (goal, experience, weight unit)
   useEffect(() => {
@@ -202,18 +213,66 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
     setExpandedEx(0);
   };
 
-  const addExercise = (ex: ExerciseSearch) => {
-    setExercises(prev => [
-      ...prev,
-      {
-        exerciseId: ex.id || ex._id,
-        exerciseName: ex.name,
-        orderIndex: prev.length,
-        sets: [{ setNumber: 1, weight: 0, reps: 0, unit: weightUnit, isFailure: false }],
-      },
-    ]);
-    setSearchOpen(false);
-    setExpandedEx(exercises.length);
+  const addExercisesFromText = async () => {
+    if (!exerciseTextInput.trim() || !user) return;
+
+    setParsingInput(true);
+    setParseError(null);
+    try {
+      const res = await fetch('/api/workout-sessions/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.email,
+          rawInput: exerciseTextInput,
+          unit: weightUnit,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setParseError(data?.error || 'Could not parse exercise input.');
+        return;
+      }
+
+      const parsedExercises = Array.isArray(data?.exercises) ? data.exercises as ParsedWorkoutExercise[] : [];
+      if (!parsedExercises.length) {
+        setParseError('No exercises were detected.');
+        return;
+      }
+
+      setExercises(prev => {
+        const base = prev.length;
+        return [
+          ...prev,
+          ...parsedExercises.map((ex, index) => ({
+            exerciseId: ex.exerciseId,
+            exerciseName: ex.exerciseName,
+            notes: ex.notes,
+            orderIndex: base + index,
+            sets: ex.sets?.length
+              ? ex.sets.map((set, setIndex) => ({
+                setNumber: setIndex + 1,
+                weight: Number(set.weight) || 0,
+                reps: Number(set.reps) || 0,
+                unit: weightUnit,
+                isFailure: Boolean(set.isFailure),
+                rpe: set.rpe,
+                restTime: set.restTime,
+              }))
+              : [{ setNumber: 1, weight: 0, reps: 0, unit: weightUnit, isFailure: false }],
+          })),
+        ];
+      });
+
+      setExpandedEx(exercises.length);
+      setExerciseTextInput('');
+      setTextEntryOpen(false);
+    } catch {
+      setParseError('Failed to parse text input. Please try again.');
+    } finally {
+      setParsingInput(false);
+    }
   };
 
   const removeExercise = (idx: number) => {
@@ -393,7 +452,7 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
                     </div>
                     <div className="col-span-2 flex justify-center">
                       <button onClick={() => updateSet(exIdx, sIdx, 'isFailure', !set.isFailure)}
-                        className={`w-6 h-6 rounded border flex items-center justify-center transition-colors
+                className={`w-6 h-6 rounded border flex items-center justify-center transition-colors
                           ${set.isFailure ? 'bg-red-500/30 border-red-500 text-red-400' : 'border-white/20 text-transparent hover:border-white/40'}`}>
                         <X className="w-3 h-3" />
                       </button>
@@ -417,18 +476,78 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
         ))}
       </div>
 
-      {/* Add exercise / Search */}
-      {searchOpen ? (
-        <ExerciseSearchPopup
-          user={user}
-          onSelect={addExercise}
-          onClose={() => setSearchOpen(false)}
-        />
+      {textEntryOpen ? (
+        <div className="glass rounded-xl p-4 space-y-3 mt-4">
+          <p className="text-xs text-gray-400">
+            Paste one exercise per line. Example: Barbell Chest Press - 65 x 5, 95 x 4, 105 x 6
+          </p>
+          <textarea
+            value={exerciseTextInput}
+            onChange={e => setExerciseTextInput(e.target.value)}
+            rows={6}
+            placeholder={[
+              'Barbell Chest Press - 65 x 5, 95 x 4, 105 x 6, 95 x 10',
+              'Shoulder Press - 50 x 10, 45 x 8, 40 x 9',
+              'Chest Flyes - 8(90), 9(85), 8(80)',
+            ].join('\n')}
+            className="w-full px-3 py-2 glass-light rounded text-white border border-white/10 focus:border-purple-500 focus:outline-none resize-y font-mono text-sm"
+          />
+          {parseError && <p className="text-sm text-red-400">{parseError}</p>}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setTextEntryOpen(false);
+                setParseError(null);
+              }}
+              className="flex-1 py-2.5 rounded-lg border border-white/10 text-gray-200 hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={addExercisesFromText}
+              disabled={parsingInput || !exerciseTextInput.trim()}
+              className="flex-1 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {parsingInput
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Formatting...</>
+                : <><Check className="w-4 h-4" /> Submit Exercises</>}
+            </button>
+          </div>
+        </div>
       ) : (
-        <button onClick={() => setSearchOpen(true)}
-          className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2">
-          <Plus className="w-5 h-5" /> Add Exercise
-        </button>
+        <div className="grid grid-cols-2 gap-3 mt-4">
+          <button onClick={() => setSearchOpen(true)}
+            className="py-3 border-2 border-dashed border-white/20 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2">
+            <Search className="w-4 h-4" /> Add Exercise
+          </button>
+          <button onClick={() => setTextEntryOpen(true)}
+            className="py-3 border-2 border-dashed border-white/20 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2">
+            <Upload className="w-4 h-4" /> Add via Text
+          </button>
+        </div>
+      )}
+
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg animate-scaleIn">
+            <ExerciseSearchPopup
+              user={user}
+              onClose={() => setSearchOpen(false)}
+              onSelect={(ex) => {
+                setExercises(prev => [...prev, {
+                  exerciseId: ex.id || ex._id,
+                  exerciseName: ex.name,
+                  orderIndex: prev.length,
+                  sets: [{ setNumber: 1, weight: 0, reps: 0, unit: weightUnit, isFailure: false }]
+                }]);
+                setExpandedEx(exercises.length);
+                setSearchOpen(false);
+              }}
+            />
+          </div>
+        </div>
       )}
       </div>
 
@@ -538,6 +657,10 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
   const [editDuration, setEditDuration] = useState<number | null>(null);
   const [editSaving, setEditSaving] = useState(false);
   const [editExpandedEx, setEditExpandedEx] = useState<number | null>(null);
+  const [editTextEntryOpen, setEditTextEntryOpen] = useState(false);
+  const [editExerciseTextInput, setEditExerciseTextInput] = useState('');
+  const [editParsingInput, setEditParsingInput] = useState(false);
+  const [editParseError, setEditParseError] = useState<string | null>(null);
 
   const fetchSessions = useCallback(async () => {
     if (!user) return;
@@ -601,6 +724,9 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
     setEditNotes('');
     setEditDuration(null);
     setEditExpandedEx(null);
+    setEditTextEntryOpen(false);
+    setEditExerciseTextInput('');
+    setEditParseError(null);
   };
 
   const updateEditSet = (exIdx: number, setIdx: number, field: string, value: number | boolean) => {
@@ -640,6 +766,69 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
   const removeEditExercise = (idx: number) => {
     setEditExercises(prev => prev.filter((_, i) => i !== idx).map((e, i) => ({ ...e, orderIndex: i })));
     if (editExpandedEx === idx) setEditExpandedEx(null);
+  };
+
+  const addEditExercisesFromText = async () => {
+    if (!editExerciseTextInput.trim() || !user) return;
+
+    setEditParsingInput(true);
+    setEditParseError(null);
+    try {
+      const inferredUnit = editExercises[0]?.sets?.[0]?.unit ?? 'lbs';
+      const res = await fetch('/api/workout-sessions/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.email,
+          rawInput: editExerciseTextInput,
+          unit: inferredUnit,
+        }),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setEditParseError(data?.error || 'Could not parse exercise input.');
+        return;
+      }
+
+      const parsedExercises = Array.isArray(data?.exercises) ? data.exercises as ParsedWorkoutExercise[] : [];
+      if (!parsedExercises.length) {
+        setEditParseError('No exercises were detected.');
+        return;
+      }
+
+      setEditExercises(prev => {
+        const base = prev.length;
+        return [
+          ...prev,
+          ...parsedExercises.map((ex, index) => ({
+            exerciseId: ex.exerciseId,
+            exerciseName: ex.exerciseName,
+            notes: ex.notes,
+            orderIndex: base + index,
+            sets: ex.sets?.length
+              ? ex.sets.map((set, setIndex) => ({
+                setNumber: setIndex + 1,
+                weight: Number(set.weight) || 0,
+                reps: Number(set.reps) || 0,
+                unit: inferredUnit,
+                isFailure: Boolean(set.isFailure),
+                rpe: set.rpe,
+                restTime: set.restTime,
+              }))
+              : [{ setNumber: 1, weight: 0, reps: 0, unit: inferredUnit, isFailure: false }],
+          })),
+        ];
+      });
+
+      setEditExpandedEx(editExercises.length);
+      setEditExerciseTextInput('');
+      setEditTextEntryOpen(false);
+    } catch {
+      setEditParseError('Failed to parse text input. Please try again.');
+    } finally {
+      setEditParsingInput(false);
+    }
   };
 
   const saveEditSession = async () => {
@@ -1097,7 +1286,57 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
 
               {/* Exercises */}
               <div>
-                <p className="text-xs font-semibold text-blue-400 mb-3">Exercises</p>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs font-semibold text-blue-400">Exercises</p>
+                  {!editTextEntryOpen && (
+                    <button
+                      type="button"
+                      onClick={() => setEditTextEntryOpen(true)}
+                      className="text-xs px-2.5 py-1 rounded border border-blue-400/40 text-blue-300 hover:bg-blue-500/10 transition-colors"
+                    >
+                      Add From Text
+                    </button>
+                  )}
+                </div>
+
+                {editTextEntryOpen && (
+                  <div className="glass rounded-xl p-3 mb-3 space-y-2">
+                    <textarea
+                      value={editExerciseTextInput}
+                      onChange={(e) => setEditExerciseTextInput(e.target.value)}
+                      rows={5}
+                      placeholder={[
+                        'Barbell Chest Press - 65 x 5, 95 x 4, 105 x 6',
+                        'Lateral Raises (25) - 10,9,8',
+                      ].join('\n')}
+                      className="w-full px-3 py-2 glass-light rounded text-white border border-white/10 focus:border-blue-500 focus:outline-none resize-y"
+                    />
+                    {editParseError && <p className="text-sm text-red-400">{editParseError}</p>}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditTextEntryOpen(false);
+                          setEditParseError(null);
+                        }}
+                        className="flex-1 py-2 rounded-lg border border-white/10 text-gray-200 hover:bg-white/10 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={addEditExercisesFromText}
+                        disabled={editParsingInput || !editExerciseTextInput.trim()}
+                        className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                      >
+                        {editParsingInput
+                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Formatting...</>
+                          : <><Check className="w-4 h-4" /> Submit Exercises</>}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 <div className="space-y-3">
                   {editExercises.map((ex, exIdx) => (
                     <div key={exIdx} className="glass rounded-xl overflow-hidden">
