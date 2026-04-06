@@ -165,9 +165,9 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Current Weight (lbs)</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Current Weight ({form.weightUnit})</label>
                 <input type="number" value={form.currentWeight} onChange={e => set('currentWeight', e.target.value)}
-                  placeholder="e.g. 175" className="w-full px-3 py-2.5 glass-light rounded-lg text-white border border-white/10 focus:border-purple-500 focus:outline-none placeholder-gray-500" />
+                  placeholder={form.weightUnit === 'lbs' ? 'e.g. 175' : 'e.g. 79'} className="w-full px-3 py-2.5 glass-light rounded-lg text-white border border-white/10 focus:border-purple-500 focus:outline-none placeholder-gray-500" />
               </div>
             </div>
           )}
@@ -251,9 +251,9 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-400 mb-1">Target Weight (lbs)</label>
+                <label className="block text-xs font-medium text-gray-400 mb-1">Target Weight ({form.weightUnit})</label>
                 <input type="number" step="0.1" value={form.weightGoal} onChange={e => set('weightGoal', e.target.value)}
-                  placeholder="e.g. 165" className="w-full px-3 py-2.5 glass-light rounded-lg text-white border border-white/10 focus:border-purple-500 focus:outline-none placeholder-gray-500" />
+                  placeholder={form.weightUnit === 'lbs' ? 'e.g. 165' : 'e.g. 75'} className="w-full px-3 py-2.5 glass-light rounded-lg text-white border border-white/10 focus:border-purple-500 focus:outline-none placeholder-gray-500" />
               </div>
 
               <div>

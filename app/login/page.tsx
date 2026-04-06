@@ -90,7 +90,7 @@ export default function LoginPage() {
             <Zap className="w-10 h-10 text-white" fill="currentColor" />
           </div>
           <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
-          <p className="text-gray-400 mt-2">Login to Velon</p>
+          <p className="text-gray-400 mt-2">Log in to Velon</p>
         </div>
 
         {message.text && (
@@ -150,7 +150,7 @@ export default function LoginPage() {
               Logging in...
             </>
           ) : (
-            'Login'
+            'Log In'
           )}
         </button>
 

@@ -86,9 +86,6 @@ export default function LandingPage() {
       {/* Features Section */}
       <section className="pt-0 pb-12 md:pb-20 px-4 md:px-6">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-12 md:mb-16">
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             {/* Feature 1 */}
             <div className="glass rounded-2xl p-8 border border-white/10 hover:border-purple-500/50 transition-all group">

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { GlassSidebar } from '@/app/components/GlassSidebar';
 import { ModernTopBar } from '@/app/components/ModernTopBar';
-import { RightSidebar } from '@/app/components/RightSidebar';
 import { DashboardModule } from '@/app/components/Dashboard/DashboardModule';
 import { CalorieTracker } from '@/app/components/Calories/CalorieTracker';
 import CalculatorModule from '@/app/components/Calculators/CalculatorModule';
@@ -154,7 +153,7 @@ export default function Home() {
       />
 
       {/* Main Content Area - Responsive margins */}
-      <main className="ml-0 md:ml-24 lg:mr-80 xl:mr-96 mt-20 min-h-screen p-4 md:p-6 lg:p-8 transition-all duration-300">
+      <main className="ml-0 md:ml-24 mt-20 min-h-screen p-4 md:p-6 lg:p-8 transition-all duration-300">
         {activeModule === 'dashboard' && <DashboardModule key={refreshKey} stats={userStats} />}
         {activeModule === 'calories' && <CalorieTracker onMealsUpdate={handleMealsUpdate} selectedDate={selectedDate} onDateChange={setSelectedDate} />}
         {activeModule === 'calculator' && <CalculatorModule />}
@@ -164,11 +163,6 @@ export default function Home() {
         {activeModule === 'profile' && <ProfilePage />}
         {activeModule === 'settings' && <SettingsPage />}
       </main>
-
-      {/* Right Sidebar - Hidden on mobile/tablet */}
-      <div className="hidden lg:block">
-        <RightSidebar key={refreshKey} />
-      </div>
 
       {/* AI Coach Chat Widget - Workouts only */}
       {activeModule === 'workouts' && <AIChatWidget />}

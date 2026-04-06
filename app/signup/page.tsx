@@ -18,12 +18,12 @@ export default function SignupPage() {
     setMessage({ text: '', type: 'error' });
 
     if (!form.email || !form.password) {
-      setMessage({ text: '? Please fill in all fields', type: 'error' });
+      setMessage({ text: 'Please fill in all fields', type: 'error' });
       return;
     }
 
     if (form.password.length < 6) {
-      setMessage({ text: '? Password must be at least 6 characters', type: 'error' });
+      setMessage({ text: 'Password must be at least 6 characters', type: 'error' });
       return;
     }
 
@@ -41,15 +41,15 @@ export default function SignupPage() {
 
       if (!res.ok) {
         const errorData = await res.json();
-        setMessage({ text: `? ${errorData.error || 'Signup failed'}`, type: 'error' });
+        setMessage({ text: errorData.error || 'Sign-up failed', type: 'error' });
         return;
       }
 
-      setMessage({ text: '? Account created successfully!', type: 'success' });
+      setMessage({ text: 'Account created successfully!', type: 'success' });
       setForm({ email: '', password: '', name: '' });
       setTimeout(() => (window.location.href = '/login'), 1500);
     } catch {
-      setMessage({ text: '? Network error. Try again.', type: 'error' });
+      setMessage({ text: 'Network error. Try again.', type: 'error' });
     } finally {
       setLoading(false);
     }
