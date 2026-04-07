@@ -2,6 +2,31 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 
+function normalizeTemplateName(name: string): string {
+  const simplified = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return simplified
+    .replace(/\b(day|days|workout|workouts|template|templates|session|sessions|training)\b/g, ' ')
+    .replace(/\s+/g, '')
+    .trim();
+}
+
+function hasTemplateNameClash(a: string, b: string): boolean {
+  const aTrim = a.trim().toLowerCase();
+  const bTrim = b.trim().toLowerCase();
+  if (aTrim === bTrim) return true;
+
+  const aNorm = normalizeTemplateName(aTrim);
+  const bNorm = normalizeTemplateName(bTrim);
+  if (!aNorm || !bNorm) return false;
+
+  return aNorm === bNorm;
+}
+
 /** GET /api/workout-templates/[id] */
 export async function GET(
   _req: NextRequest,
@@ -29,8 +54,30 @@ export async function PUT(
     const body = await req.json();
     const col = await getCollection('WorkoutTemplate');
 
+    const existing = await col.findOne({ _id: new ObjectId(id) });
+    if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+
+    const requestedName = typeof body.name === 'string' ? body.name.trim() : undefined;
+    if (requestedName) {
+      const siblings = await col
+        .find({ userId: existing.userId, _id: { $ne: new ObjectId(id) } })
+        .project({ _id: 1, name: 1 })
+        .toArray() as Array<{ _id: { toString(): string }; name?: string }>;
+
+      const clash = siblings.find(t => t.name && hasTemplateNameClash(requestedName, t.name));
+      if (clash) {
+        return NextResponse.json({
+          error: 'Template name clashes with an existing template',
+          clash: {
+            _id: clash._id.toString(),
+            name: clash.name,
+          },
+        }, { status: 409 });
+      }
+    }
+
     const update = {
-      ...(body.name && { name: body.name }),
+      ...(requestedName && { name: requestedName }),
       ...(body.goal && { goal: body.goal }),
       ...(body.exercises && { exercises: body.exercises }),
       updatedAt: new Date(),

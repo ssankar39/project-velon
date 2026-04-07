@@ -7,6 +7,7 @@ export async function GET(req: NextRequest) {
     const sp = req.nextUrl.searchParams;
     const userId = sp.get('userId');
     const date = sp.get('date');
+    const status = sp.get('status');
     const weeks = Number(sp.get('weeks') || 0); // fetch last N weeks of history
     const limit = Math.min(Number(sp.get('limit') || 50), 200);
 
@@ -32,6 +33,14 @@ export async function GET(req: NextRequest) {
       query.date = { $gte: since };
     }
 
+    if (status && ['planned', 'loaded', 'completed'].includes(status)) {
+      if (status === 'completed') {
+        query.$or = [{ status: 'completed' }, { status: { $exists: false } }, { status: null }];
+      } else {
+        query.status = status;
+      }
+    }
+
     const sessions = await col.find(query).sort({ date: -1 }).limit(limit).toArray();
     const formatted = sessions.map(({ _id, ...rest }) => ({ _id: _id.toString(), ...rest }));
 
@@ -47,6 +56,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { userId, exercises, goal } = body;
+    const status = body.status === 'planned' || body.status === 'loaded' ? body.status : 'completed';
 
     if (!userId || !exercises?.length || !goal) {
       return NextResponse.json({ error: 'Missing required fields (userId, exercises, goal)' }, { status: 400 });
@@ -78,29 +88,32 @@ export async function POST(req: NextRequest) {
       goal,
       experienceLevel: body.experienceLevel ?? 'beginner',
       exercises,
+      status,
       estimatedCalories: Math.round(estCalories),
-      coachFeedback: null,
+      coachFeedback: status === 'completed' ? null : body.coachFeedback ?? null,
       createdAt: now,
       updatedAt: now,
     };
 
     const result = await col.insertOne(doc);
 
-    // Also insert a legacy Workout record for backwards-compat with dashboard stats
-    const legacyCol = await getCollection('Workout');
-    for (const ex of exercises) {
-      const totalSets = ex.sets?.length ?? 0;
-      const totalReps = ex.sets?.reduce((s: number, set: { reps?: number }) => s + (set.reps || 0), 0) ?? 0;
-      await legacyCol.insertOne({
-        userId: user._id.toString(),
-        name: ex.exerciseName,
-        sets: totalSets,
-        reps: Math.round(totalReps / Math.max(totalSets, 1)),
-        caloriesBurned: Math.round(estCalories / exercises.length),
-        timestamp: doc.date,
-        createdAt: now,
-        updatedAt: now,
-      });
+    if (status === 'completed') {
+      // Also insert a legacy Workout record for backwards-compat with dashboard stats
+      const legacyCol = await getCollection('Workout');
+      for (const ex of exercises) {
+        const totalSets = ex.sets?.length ?? 0;
+        const totalReps = ex.sets?.reduce((s: number, set: { reps?: number }) => s + (set.reps || 0), 0) ?? 0;
+        await legacyCol.insertOne({
+          userId: user._id.toString(),
+          name: ex.exerciseName,
+          sets: totalSets,
+          reps: Math.round(totalReps / Math.max(totalSets, 1)),
+          caloriesBurned: Math.round(estCalories / exercises.length),
+          timestamp: doc.date,
+          createdAt: now,
+          updatedAt: now,
+        });
+      }
     }
 
     return NextResponse.json({ _id: result.insertedId.toString(), ...doc }, { status: 201 });

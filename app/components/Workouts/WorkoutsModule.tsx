@@ -37,6 +37,9 @@ interface TemplateExercise {
   targetReps: number;
   orderIndex: number;
   notes?: string;
+  targetWeight?: number;
+  targetUnit?: 'lbs' | 'kg';
+  setData?: Array<{ weight: number; reps: number; unit: 'lbs' | 'kg' }>;
 }
 
 interface WorkoutTemplate {
@@ -52,6 +55,7 @@ interface WorkoutSession {
   userId: string;
   templateId?: string;
   templateName?: string;
+  status?: 'planned' | 'loaded' | 'completed';
   date: string;
   duration?: number;
   notes?: string;
@@ -83,7 +87,7 @@ interface ExerciseSearch {
 }
 
 interface CoachFeedback {
-  nextSessionTargets: { exerciseName: string; targetSets: number; targetReps: string; targetWeight: number; targetUnit: string; notes?: string }[];
+  nextSessionTargets: { exerciseId?: string; exerciseName: string; targetSets: number; targetReps: string; targetWeight: number; targetUnit: string; notes?: string }[];
   progressionAdjustments: { exerciseName: string; type: string; description: string; value?: number }[];
   volumeBalance: { muscleGroup: string; currentSets: number; recommendedRange: { min: number; max: number }; action: string; suggestion?: string }[];
   warnings: { type: string; severity: string; message: string; affectedExercise?: string; affectedMuscle?: string }[];
@@ -100,7 +104,118 @@ interface ParsedWorkoutExercise {
   sets: SetEntry[];
 }
 
-type Tab = 'log' | 'history' | 'library';
+type Tab = 'log' | 'history' | 'library' | 'templates';
+
+function toDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function clonePerformedExercises(exercises: PerformedExercise[]): PerformedExercise[] {
+  return exercises.map(exercise => ({
+    ...exercise,
+    sets: exercise.sets.map(set => ({ ...set })),
+  }));
+}
+
+function buildPerformedExercisesFromTemplate(
+  template: WorkoutTemplate,
+  fallbackUnit: 'lbs' | 'kg',
+): PerformedExercise[] {
+  return template.exercises.map((exercise, index) => {
+    const exactSets = exercise.setData?.length
+      ? exercise.setData.map((set, setIndex) => ({
+        setNumber: setIndex + 1,
+        weight: Number(set.weight) || 0,
+        reps: Number(set.reps) || 0,
+        unit: set.unit || fallbackUnit,
+        isFailure: false,
+      }))
+      : Array.from({ length: exercise.targetSets }, (_, setIndex) => ({
+        setNumber: setIndex + 1,
+        weight: exercise.targetWeight ?? 0,
+        reps: exercise.targetReps,
+        unit: exercise.targetUnit ?? fallbackUnit,
+        isFailure: false,
+      }));
+
+    return {
+      exerciseId: exercise.exerciseId,
+      exerciseName: exercise.exerciseName,
+      orderIndex: index,
+      notes: exercise.notes,
+      sets: exactSets,
+    };
+  });
+}
+
+async function createTemplateWithResolution(params: {
+  userId: string;
+  name: string;
+  goal: 'hypertrophy' | 'strength' | 'endurance';
+  exercises: TemplateExercise[];
+}): Promise<{ template: WorkoutTemplate; finalName: string }> {
+  let nextName = params.name.trim();
+  if (!nextName) throw new Error('Template name is required');
+
+  while (true) {
+    const res = await fetch('/api/workout-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: params.userId,
+        name: nextName,
+        goal: params.goal,
+        exercises: params.exercises,
+      }),
+    });
+
+    if (res.ok) {
+      const template = await res.json();
+      return { template, finalName: nextName };
+    }
+
+    const errorData = await res.json().catch(() => ({}));
+    if (res.status !== 409) {
+      throw new Error(errorData?.error || 'Failed to save template');
+    }
+
+    const clashName = errorData?.clash?.name || 'an existing template';
+    const override = window.confirm(
+      `Template "${nextName}" clashes with "${clashName}".\n\nPress OK to override it, or Cancel to rename.`,
+    );
+
+    if (override) {
+      const overrideRes = await fetch('/api/workout-templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: params.userId,
+          name: nextName,
+          goal: params.goal,
+          exercises: params.exercises,
+          overrideExisting: true,
+        }),
+      });
+
+      if (!overrideRes.ok) {
+        const overrideError = await overrideRes.json().catch(() => ({}));
+        throw new Error(overrideError?.error || 'Failed to override template');
+      }
+
+      const template = await overrideRes.json();
+      return { template, finalName: nextName };
+    }
+
+    const renamed = window.prompt('Enter a new template name', `${nextName} Copy`)?.trim();
+    if (!renamed) {
+      throw new Error('Template save cancelled');
+    }
+    nextName = renamed;
+  }
+}
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
@@ -123,6 +238,7 @@ export const WorkoutsModule: React.FC = () => {
     { key: 'log', label: 'Log Session', icon: <Play className="w-4 h-4" /> },
     { key: 'history', label: 'History', icon: <History className="w-4 h-4" /> },
     { key: 'library', label: 'Exercises', icon: <BookOpen className="w-4 h-4" /> },
+    { key: 'templates', label: 'Templates', icon: <Save className="w-4 h-4" /> },
   ];
 
   return (
@@ -147,6 +263,7 @@ export const WorkoutsModule: React.FC = () => {
       {activeTab === 'log' && <SessionLogger user={currentUser} />}
       {activeTab === 'history' && <SessionHistory user={currentUser} />}
       {activeTab === 'library' && <ExerciseLibrary user={currentUser} />}
+      {activeTab === 'templates' && <TemplateManager user={currentUser} />}
     </div>
   );
 };
@@ -172,7 +289,11 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
   const [expandedEx, setExpandedEx] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [weightUnit, setWeightUnit] = useState<'lbs' | 'kg'>('lbs');
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [plannedSessions, setPlannedSessions] = useState<WorkoutSession[]>([]);
+  const [plannedSessionsLoading, setPlannedSessionsLoading] = useState(false);
+  const [loadingPlannedSessionId, setLoadingPlannedSessionId] = useState<string | null>(null);
+  const [submitNotice, setSubmitNotice] = useState<string | null>(null);
+  const submitTimeoutRef = useRef<number | null>(null);
 
   // Load user preferences (goal, experience, weight unit)
   useEffect(() => {
@@ -188,6 +309,41 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
   }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setPlannedSessions([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchPlannedSessions = async () => {
+      setPlannedSessionsLoading(true);
+      try {
+        const res = await fetch(`/api/workout-sessions?userId=${encodeURIComponent(user.email)}&date=${toDateKey(new Date())}&status=planned`);
+        const data = await res.json().catch(() => []);
+        if (!cancelled) {
+          setPlannedSessions(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) setPlannedSessions([]);
+      } finally {
+        if (!cancelled) setPlannedSessionsLoading(false);
+      }
+    };
+
+    fetchPlannedSessions();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, selectedTemplate]);
+
+  useEffect(() => () => {
+    if (submitTimeoutRef.current) {
+      window.clearTimeout(submitTimeoutRef.current);
+    }
+  }, []);
+
+  useEffect(() => {
     if (user) {
       fetch(`/api/workout-templates?userId=${encodeURIComponent(user.email)}`)
         .then(r => r.json())
@@ -201,16 +357,39 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
     if (!tpl) return;
     setGoal(tpl.goal);
     setSelectedTemplate(templateId);
-    setExercises(tpl.exercises.map((e, i) => ({
-      exerciseId: e.exerciseId,
-      exerciseName: e.exerciseName,
-      orderIndex: i,
-      notes: e.notes,
-      sets: Array.from({ length: e.targetSets }, (_, j) => ({
-        setNumber: j + 1, weight: 0, reps: e.targetReps, unit: weightUnit, isFailure: false,
-      })),
-    })));
+    setExercises(buildPerformedExercisesFromTemplate(tpl, weightUnit));
     setExpandedEx(0);
+  };
+
+  const loadPlannedSession = async (plannedSession: WorkoutSession) => {
+    if (!user) return;
+
+    setLoadingPlannedSessionId(plannedSession._id);
+    try {
+      setGoal(plannedSession.goal);
+      setSelectedTemplate(plannedSession.templateId || '');
+      setSelectedDate(new Date(plannedSession.date));
+      setExercises(clonePerformedExercises(plannedSession.exercises));
+      setExpandedEx(0);
+
+      const res = await fetch(`/api/workout-sessions/${plannedSession._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'loaded' }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || 'Failed to mark planned session as loaded');
+      }
+
+      setPlannedSessions(prev => prev.filter(session => session._id !== plannedSession._id));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to load planned session';
+      alert(message);
+    } finally {
+      setLoadingPlannedSessionId(null);
+    }
   };
 
   const addExercisesFromText = async () => {
@@ -336,11 +515,16 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
       });
       if (res.ok) {
         setSaved(true);
-        setTimeout(() => {
+        setSubmitNotice('Session saved! View in History →');
+        if (submitTimeoutRef.current) {
+          window.clearTimeout(submitTimeoutRef.current);
+        }
+        submitTimeoutRef.current = window.setTimeout(() => {
           setExercises([]);
           setSelectedTemplate('');
           setSaved(false);
-        }, 2000);
+          setSubmitNotice(null);
+        }, 4000);
       }
     } catch (e) {
       console.error('Save error:', e);
@@ -362,6 +546,39 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
         <div className="mb-4">
           <DatePicker onDateSelect={d => setSelectedDate(d)} />
         </div>
+
+        {plannedSessionsLoading ? (
+          <div className="mb-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-gray-300 flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-purple-400" /> Checking for planned sessions...
+          </div>
+        ) : plannedSessions.length > 0 && (
+          <div className="mb-4 space-y-2 rounded-xl border border-purple-500/30 bg-purple-500/10 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-purple-200">
+              <Target className="w-4 h-4" />
+              <span>You have a planned workout for today. Load one to continue.</span>
+            </div>
+            <div className="space-y-2">
+              {plannedSessions.map(session => (
+                <div key={session._id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 rounded-lg bg-black/20 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-medium text-white">{session.templateName || 'Planned Session'}</p>
+                    <p className="text-xs text-gray-400">{session.exercises?.length || 0} exercises ready</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => loadPlannedSession(session)}
+                    disabled={loadingPlannedSessionId === session._id}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-60"
+                  >
+                    {loadingPlannedSessionId === session._id
+                      ? <><Loader2 className="w-4 h-4 animate-spin" /> Loading...</>
+                      : 'Load Session'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
           <select
@@ -511,58 +728,39 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
               className="flex-1 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {parsingInput
-                ? <><Loader2 className="w-4 h-4 animate-spin" /> Formatting...</>
-                : <><Check className="w-4 h-4" /> Submit Exercises</>}
+                ? <><Loader2 className="w-4 h-4 animate-spin" /> Parsing...</>
+                : <><Check className="w-4 h-4" /> Add to Session</>}
             </button>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 mt-4">
-          <button onClick={() => setSearchOpen(true)}
-            className="py-3 border-2 border-dashed border-white/20 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2">
-            <Search className="w-4 h-4" /> Add Exercise
-          </button>
-          <button onClick={() => setTextEntryOpen(true)}
-            className="py-3 border-2 border-dashed border-white/20 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2">
-            <Upload className="w-4 h-4" /> Add via Text
-          </button>
-        </div>
-      )}
-
-      {searchOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
-          <div className="w-full max-w-lg animate-scaleIn">
-            <ExerciseSearchPopup
-              user={user}
-              onClose={() => setSearchOpen(false)}
-              onSelect={(ex) => {
-                setExercises(prev => [...prev, {
-                  exerciseId: ex.id || ex._id,
-                  exerciseName: ex.name,
-                  orderIndex: prev.length,
-                  sets: [{ setNumber: 1, weight: 0, reps: 0, unit: weightUnit, isFailure: false }]
-                }]);
-                setExpandedEx(exercises.length);
-                setSearchOpen(false);
-              }}
-            />
-          </div>
-        </div>
+        <button onClick={() => setTextEntryOpen(true)}
+          className="w-full py-3 border-2 border-dashed border-white/20 rounded-xl text-gray-400 hover:text-purple-400 hover:border-purple-500/50 transition-all flex items-center justify-center gap-2">
+          <Plus className="w-5 h-5" /> Add Exercise
+        </button>
       )}
       </div>
 
       {/* Save button */}
       {exercises.length > 0 && (
-        <button onClick={saveSession} disabled={saving || saved}
-          className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2
-            ${saved
-              ? 'bg-green-600 text-white'
-              : 'bg-linear-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white hover:shadow-lg hover:shadow-purple-500/30'
-            } disabled:opacity-60`}>
-          {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
-            : saved ? <><Check className="w-4 h-4" /> Saved!</>
-            : <><Save className="w-4 h-4" /> Save Session</>}
-        </button>
+        <div className="space-y-2">
+          <p className="text-xs text-gray-400">Unsaved - add exercises freely before submitting.</p>
+          {submitNotice && (
+            <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-200">
+              {submitNotice}
+            </div>
+          )}
+          <button onClick={saveSession} disabled={saving || saved}
+            className={`w-full py-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2
+              ${saved
+                ? 'bg-green-600 text-white'
+                : 'bg-linear-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white hover:shadow-lg hover:shadow-purple-500/30'
+              } disabled:opacity-60`}>
+            {saving ? <><Loader2 className="w-4 h-4 animate-spin" /> Submitting...</>
+              : saved ? <><Check className="w-4 h-4" /> Submitted!</>
+              : <><Upload className="w-4 h-4" /> Submit Session</>}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -636,6 +834,326 @@ function ExerciseSearchPopup({ user, onSelect, onClose }: {
 // TEMPLATE MANAGER
 // ═══════════════════════════════════════════════════════════════════════════════
 
+function TemplateManager({ user }: { user: AuthUser | null }) {
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busyTemplateId, setBusyTemplateId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState('');
+  const [draftGoal, setDraftGoal] = useState<'hypertrophy' | 'strength' | 'endurance'>('hypertrophy');
+  const [draftExercises, setDraftExercises] = useState<TemplateExercise[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  const fetchTemplates = useCallback(async () => {
+    if (!user) {
+      setTemplates([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/workout-templates?userId=${encodeURIComponent(user.email)}`);
+      const data = await res.json();
+      setTemplates(Array.isArray(data) ? data : []);
+    } catch {
+      setTemplates([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
+
+  const addDraftExercise = (ex: ExerciseSearch) => {
+    setDraftExercises(prev => [
+      ...prev,
+      {
+        exerciseId: ex.id || ex._id,
+        exerciseName: ex.name,
+        orderIndex: prev.length,
+        targetSets: 3,
+        targetReps: 8,
+      },
+    ]);
+    setSearchOpen(false);
+  };
+
+  const removeDraftExercise = (index: number) => {
+    setDraftExercises(prev => prev.filter((_, i) => i !== index).map((item, i) => ({ ...item, orderIndex: i })));
+  };
+
+  const saveDraftTemplate = async () => {
+    if (!user) return;
+    const name = draftName.trim();
+    if (!name) {
+      alert('Template name is required');
+      return;
+    }
+    if (!draftExercises.length) {
+      alert('Add at least one exercise to create a template');
+      return;
+    }
+
+    setBusyTemplateId('create');
+    try {
+      const { finalName } = await createTemplateWithResolution({
+        userId: user.email,
+        name,
+        goal: draftGoal,
+        exercises: draftExercises,
+      });
+      alert(`Saved template: ${finalName}`);
+      setDraftName('');
+      setDraftExercises([]);
+      fetchTemplates();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to save template';
+      alert(message);
+    } finally {
+      setBusyTemplateId(null);
+    }
+  };
+
+  const renameTemplate = async (template: WorkoutTemplate) => {
+    setBusyTemplateId(template._id);
+    try {
+      let nextName = window.prompt('Rename template', template.name)?.trim();
+      if (!nextName || nextName === template.name) return;
+
+      while (true) {
+        const res: Response = await fetch(`/api/workout-templates/${template._id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: nextName }),
+        });
+
+        if (res.ok) break;
+
+        const errorData: { error?: string; clash?: { name?: string } } = await res.json().catch(() => ({}));
+        if (res.status !== 409) {
+          throw new Error(errorData?.error || 'Failed to rename template');
+        }
+
+        const clashName: string = errorData?.clash?.name || 'an existing template';
+        const retry: string | undefined = window.prompt(
+          `"${nextName}" clashes with "${clashName}". Enter another name:`,
+          `${nextName} Copy`,
+        )?.trim();
+        if (!retry) {
+          throw new Error('Rename cancelled');
+        }
+        nextName = retry;
+      }
+
+      fetchTemplates();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to rename template';
+      alert(message);
+    } finally {
+      setBusyTemplateId(null);
+    }
+  };
+
+  const deleteTemplate = async (template: WorkoutTemplate) => {
+    if (!window.confirm(`Delete template "${template.name}"? This cannot be undone.`)) return;
+
+    setBusyTemplateId(template._id);
+    try {
+      const res = await fetch(`/api/workout-templates/${template._id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || 'Failed to delete template');
+      }
+      fetchTemplates();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to delete template';
+      alert(message);
+    } finally {
+      setBusyTemplateId(null);
+    }
+  };
+
+  const duplicateTemplate = async (template: WorkoutTemplate) => {
+    if (!user) return;
+    const suggestedName = `${template.name} Copy`;
+    const name = window.prompt('Duplicate as', suggestedName)?.trim();
+    if (!name) return;
+
+    setBusyTemplateId(template._id);
+    try {
+      await createTemplateWithResolution({
+        userId: user.email,
+        name,
+        goal: template.goal,
+        exercises: template.exercises ?? [],
+      });
+      fetchTemplates();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to duplicate template';
+      alert(message);
+    } finally {
+      setBusyTemplateId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="glass rounded-2xl p-4 sm:p-6 space-y-4">
+        <div className="flex items-center gap-3">
+          <Save className="w-6 h-6 text-purple-400" />
+          <h3 className="text-xl font-semibold text-white">Template Manager</h3>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input
+            value={draftName}
+            onChange={e => setDraftName(e.target.value)}
+            placeholder="Template name"
+            className="px-3 py-2.5 glass-light rounded-lg text-white border border-white/10 focus:border-purple-500 focus:outline-none"
+          />
+          <select
+            value={draftGoal}
+            onChange={e => setDraftGoal(e.target.value as 'hypertrophy' | 'strength' | 'endurance')}
+            className="px-3 py-2.5 glass-light rounded-lg text-white border border-white/10 focus:border-purple-500 focus:outline-none"
+          >
+            <option value="hypertrophy" className="bg-slate-900">Hypertrophy</option>
+            <option value="strength" className="bg-slate-900">Strength</option>
+            <option value="endurance" className="bg-slate-900">Endurance</option>
+          </select>
+          <button
+            type="button"
+            onClick={saveDraftTemplate}
+            disabled={busyTemplateId === 'create' || !user}
+            className="px-3 py-2.5 rounded-lg bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {busyTemplateId === 'create'
+              ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</>
+              : <><Save className="w-4 h-4" /> Save Template</>}
+          </button>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400">Draft exercises: {draftExercises.length}</p>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="text-xs px-2.5 py-1 rounded border border-white/20 text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              Add Exercise
+            </button>
+          </div>
+          <div className="space-y-2">
+            {draftExercises.map((ex, index) => (
+              <div key={`${ex.exerciseId}-${index}`} className="glass-light rounded-lg p-2.5 flex items-center gap-2">
+                <span className="text-xs text-purple-400 w-5">{index + 1}</span>
+                <p className="text-sm text-white capitalize flex-1">{ex.exerciseName}</p>
+                <input
+                  type="number"
+                  min="1"
+                  value={ex.targetSets}
+                  onChange={(e) => {
+                    const value = Math.max(1, parseInt(e.target.value) || 1);
+                    setDraftExercises(prev => prev.map((item, i) => i === index ? { ...item, targetSets: value } : item));
+                  }}
+                  className="w-16 px-2 py-1 glass-light rounded text-white text-xs border border-white/10 focus:border-purple-500 focus:outline-none"
+                />
+                <input
+                  type="number"
+                  min="1"
+                  value={ex.targetReps}
+                  onChange={(e) => {
+                    const value = Math.max(1, parseInt(e.target.value) || 1);
+                    setDraftExercises(prev => prev.map((item, i) => i === index ? { ...item, targetReps: value } : item));
+                  }}
+                  className="w-16 px-2 py-1 glass-light rounded text-white text-xs border border-white/10 focus:border-purple-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => removeDraftExercise(index)}
+                  className="p-1 text-red-400/70 hover:text-red-400"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            {!draftExercises.length && (
+              <p className="text-xs text-gray-500">No draft exercises yet. Add exercises to build a template.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="glass rounded-2xl p-4 sm:p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm tracking-widest text-purple-400 uppercase">Saved Templates</h4>
+          <button
+            type="button"
+            onClick={fetchTemplates}
+            className="text-xs text-gray-300 hover:text-white transition-colors"
+          >
+            Refresh
+          </button>
+        </div>
+
+        {loading ? (
+          <p className="text-gray-400 text-center py-8 flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Loading...</p>
+        ) : templates.length === 0 ? (
+          <p className="text-gray-400 text-center py-6">No templates saved yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {templates.map(template => (
+              <div key={template._id} className="glass-light rounded-lg p-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-white truncate">{template.name}</p>
+                  <p className="text-xs text-gray-400 capitalize">{template.goal} • {template.exercises?.length ?? 0} exercises</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => duplicateTemplate(template)}
+                  disabled={busyTemplateId === template._id}
+                  className="px-2 py-1 text-xs rounded border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-60"
+                >
+                  Duplicate
+                </button>
+                <button
+                  type="button"
+                  onClick={() => renameTemplate(template)}
+                  disabled={busyTemplateId === template._id}
+                  className="px-2 py-1 text-xs rounded border border-white/10 text-gray-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-60"
+                >
+                  Rename
+                </button>
+                <button
+                  type="button"
+                  onClick={() => deleteTemplate(template)}
+                  disabled={busyTemplateId === template._id}
+                  className="px-2 py-1 text-xs rounded border border-red-500/30 text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-60"
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {searchOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className="w-full max-w-lg animate-scaleIn">
+            <ExerciseSearchPopup
+              user={user}
+              onClose={() => setSearchOpen(false)}
+              onSelect={addDraftExercise}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // SESSION HISTORY + AI COACH
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -666,9 +1184,11 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
     if (!user) return;
     setLoading(true);
     try {
+      const statusFilter = 'status=completed';
+      const selectedDateKey = toDateKey(selectedDate);
       const params = viewMode === 'date'
-        ? `userId=${encodeURIComponent(user.email)}&date=${selectedDate.toISOString().split('T')[0]}`
-        : `userId=${encodeURIComponent(user.email)}&weeks=${weeksToShow}&limit=100`;
+        ? `userId=${encodeURIComponent(user.email)}&date=${selectedDateKey}&${statusFilter}`
+        : `userId=${encodeURIComponent(user.email)}&weeks=${weeksToShow}&limit=100&${statusFilter}`;
       const res = await fetch(`/api/workout-sessions?${params}`);
       const data = await res.json();
       setSessions(Array.isArray(data) ? data : []);
@@ -874,58 +1394,61 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
     setSavingTemplateId(session._id);
     try {
       const exercises: TemplateExercise[] = session.exercises.map((ex, index) => {
-        const reps = ex.sets?.map(set => set.reps).filter(r => Number.isFinite(r) && r > 0) ?? [];
+        const validSets = ex.sets?.filter(set => Number.isFinite(set.weight) || Number.isFinite(set.reps)) ?? [];
+        const reps = validSets.map(set => Number(set.reps) || 0).filter(value => value > 0);
+        const weights = validSets.map(set => Number(set.weight) || 0).filter(value => value > 0);
         const avgReps = reps.length
           ? Math.round(reps.reduce((sum, repsValue) => sum + repsValue, 0) / reps.length)
           : 8;
+        const lastSet = validSets[validSets.length - 1];
+        const avgWeight = lastSet?.weight ?? (weights.length
+          ? Math.round((weights.reduce((sum, weight) => sum + weight, 0) / weights.length) * 100) / 100
+          : 0);
+        const targetUnit = lastSet?.unit ?? ex.sets?.[0]?.unit ?? 'lbs';
 
         return {
           exerciseId: ex.exerciseId,
           exerciseName: ex.exerciseName,
           targetSets: Math.max(ex.sets?.length ?? 0, 1),
           targetReps: avgReps,
+          targetWeight: avgWeight,
+          targetUnit,
+          setData: validSets.map(set => ({
+            weight: Number(set.weight) || 0,
+            reps: Number(set.reps) || 0,
+            unit: set.unit,
+          })),
           orderIndex: index,
           notes: ex.notes,
         };
       });
 
-      const res = await fetch('/api/workout-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.email,
-          name,
-          goal: session.goal,
-          exercises,
-        }),
+      const { template: createdTemplate, finalName } = await createTemplateWithResolution({
+        userId: user.email,
+        name,
+        goal: session.goal,
+        exercises,
       });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData?.error || 'Failed to save template');
-      }
-
-      const createdTemplate = await res.json();
 
       await fetch(`/api/workout-sessions/${session._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           templateId: createdTemplate?._id ?? null,
-          templateName: name,
+          templateName: finalName,
         }),
       });
 
       setSessions(prev => prev.map(s => s._id === session._id
-        ? { ...s, templateId: createdTemplate?._id ?? s.templateId, templateName: name }
+        ? { ...s, templateId: createdTemplate?._id ?? s.templateId, templateName: finalName }
         : s,
       ));
       setSelectedSession(prev => prev && prev._id === session._id
-        ? { ...prev, templateId: createdTemplate?._id ?? prev.templateId, templateName: name }
+        ? { ...prev, templateId: createdTemplate?._id ?? prev.templateId, templateName: finalName }
         : prev,
       );
 
-      alert(`Saved template: ${name}`);
+      alert(`Saved template: ${finalName}`);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Failed to save template';
       alert(message);
@@ -1059,6 +1582,8 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
                       </button>
                       <CoachFeedbackDisplay
                         feedback={session.coachFeedback}
+                        session={session}
+                        user={user}
                         onRefresh={() => getCoachFeedback(session._id)}
                         refreshing={coachLoading === session._id}
                       />
@@ -1203,6 +1728,8 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
                   </p>
                   <CoachFeedbackDisplay
                     feedback={selectedSession.coachFeedback}
+                    session={selectedSession}
+                    user={user}
                     onRefresh={() => getCoachFeedback(selectedSession._id)}
                     refreshing={coachLoading === selectedSession._id}
                   />
@@ -1330,8 +1857,8 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
                         className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                       >
                         {editParsingInput
-                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Formatting...</>
-                          : <><Check className="w-4 h-4" /> Submit Exercises</>}
+                          ? <><Loader2 className="w-4 h-4 animate-spin" /> Parsing...</>
+                          : <><Check className="w-4 h-4" /> Add to Session</>}
                       </button>
                     </div>
                   </div>
@@ -1450,22 +1977,82 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
 
 function CoachFeedbackDisplay({
   feedback,
+  session,
+  user,
   onRefresh,
   refreshing,
 }: {
   feedback: CoachFeedback;
+  session: WorkoutSession;
+  user: AuthUser | null;
   onRefresh?: () => void;
   refreshing?: boolean;
 }) {
   const [showDetails, setShowDetails] = useState(false);
+  const [calendarPickerOpen, setCalendarPickerOpen] = useState(false);
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
+  const [calendarNotice, setCalendarNotice] = useState<string | null>(null);
+
+  const plannedTargets = feedback.nextSessionTargets ?? [];
 
   const handleDiscuss = () => {
     const context = `Here's my latest session feedback:\n\n${feedback.summary}\n\nCan you dive deeper and give me specific recommendations for next session?`;
     window.dispatchEvent(new CustomEvent('coach-context', { detail: { context } }));
   };
 
+  const handleAddToCalendar = async () => {
+    if (!user || !plannedTargets.length) return;
+
+    setAddingToCalendar(true);
+    setCalendarNotice(null);
+    try {
+      const payload = {
+        userId: user.email,
+        date: calendarDate.toISOString(),
+        goal: session.goal,
+        templateName: session.templateName || `${session.goal.charAt(0).toUpperCase()}${session.goal.slice(1)} Plan`,
+        exercises: plannedTargets.map(target => ({
+          exerciseId: target.exerciseId || target.exerciseName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+          exerciseName: target.exerciseName,
+          targetSets: target.targetSets,
+          targetReps: target.targetReps,
+          targetWeight: target.targetWeight,
+          targetUnit: target.targetUnit,
+          notes: target.notes,
+        })),
+        status: 'planned',
+      };
+
+      const res = await fetch('/api/workout-sessions/planned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData?.error || 'Failed to add session to calendar');
+      }
+
+      setCalendarNotice('Planned session added to calendar.');
+      setCalendarPickerOpen(false);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to add session to calendar';
+      alert(message);
+    } finally {
+      setAddingToCalendar(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
+      {calendarNotice && (
+        <div className="rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-200">
+          {calendarNotice}
+        </div>
+      )}
+
       {/* AI Summary */}
       <div className="glass-light rounded-lg p-4 border-l-4 border-blue-500">
         <div className="flex items-center justify-between mb-2">
@@ -1522,6 +2109,14 @@ function CoachFeedbackDisplay({
                   </div>
                 ))}
               </div>
+              <button
+                type="button"
+                onClick={() => setCalendarPickerOpen(true)}
+                disabled={!user || addingToCalendar}
+                className="mt-3 inline-flex items-center justify-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-xs font-medium text-purple-200 transition-colors hover:bg-purple-500/20 disabled:opacity-60"
+              >
+                {addingToCalendar ? <><Loader2 className="w-3 h-3 animate-spin" /> Adding...</> : 'Add to Calendar'}
+              </button>
             </div>
           )}
 
@@ -1544,6 +2139,44 @@ function CoachFeedbackDisplay({
             </div>
           )}
 
+        </div>
+      )}
+
+      {calendarPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-slate-950 p-4 shadow-2xl shadow-black/40">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h4 className="text-lg font-semibold text-white">Add to Calendar</h4>
+                <p className="text-sm text-gray-400">Pick a date for this planned session.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCalendarPickerOpen(false)}
+                className="rounded-lg p-2 text-gray-400 hover:bg-white/10 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <DatePicker onDateSelect={setCalendarDate} />
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                onClick={() => setCalendarPickerOpen(false)}
+                className="rounded-lg border border-white/10 px-4 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleAddToCalendar}
+                disabled={addingToCalendar || !user}
+                className="inline-flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-60"
+              >
+                {addingToCalendar ? <><Loader2 className="w-4 h-4 animate-spin" /> Saving...</> : 'Confirm'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

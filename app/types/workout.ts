@@ -65,6 +65,9 @@ export interface TemplateExercise {
   targetReps: number;
   orderIndex: number;
   notes?: string;
+  targetWeight?: number;
+  targetUnit?: 'lbs' | 'kg';
+  setData?: Array<{ weight: number; reps: number; unit: 'lbs' | 'kg' }>;
 }
 
 export interface WorkoutTemplate {
@@ -82,6 +85,7 @@ export interface WorkoutSession {
   userId: string;
   templateId?: string;
   templateName?: string;
+  status?: 'planned' | 'loaded' | 'completed';
   date: Date;
   duration?: number; // minutes
   notes?: string;
