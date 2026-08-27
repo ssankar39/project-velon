@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { Dumbbell, Flame, TrendingUp } from 'lucide-react';
 import { LiveActivityCard } from './LiveActivityCard';
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface Workout {
   id: string;
@@ -23,17 +25,12 @@ interface FastingSession {
 }
 
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
-}
-
 interface RightSidebarProps {
   userId?: string;
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
+  const { user: currentUser } = useAuth();
   const [recentWorkouts, setRecentWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeFasting, setActiveFasting] = useState<FastingSession | null>(null);
@@ -46,11 +43,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
 
   const fetchActiveData = async () => {
     try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) return;
-
-      const user: AuthUser = JSON.parse(storedUser);
-      const userEmail = userId || user.email;
+      const userEmail = userId || currentUser?.email;
+      if (!userEmail) return;
       
       // Fetch today's workouts (most recent one)
       // Fetch active fasting session
@@ -61,18 +55,15 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
         setActiveFasting(active);
       }
     } catch (error) {
-      console.error('Error fetching active data:', error);
+      logger.error('Error fetching active data:', error);
     }
   };
 
   const fetchRecentWorkouts = async () => {
     try {
       setLoading(true);
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) return;
-
-      const user: AuthUser = JSON.parse(storedUser);
-      const userEmail = userId || user.email;
+      const userEmail = userId || currentUser?.email;
+      if (!userEmail) return;
 
       // Fetch workouts from the last 7 days
       const response = await fetch(`/api/workouts?userId=${encodeURIComponent(userEmail)}`);
@@ -84,7 +75,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ userId }) => {
       const recent = allWorkouts.slice(0, 5);
       setRecentWorkouts(recent);
     } catch (error) {
-      console.error('Error fetching recent workouts:', error);
+      logger.error('Error fetching recent workouts:', error);
     } finally {
       setLoading(false);
     }

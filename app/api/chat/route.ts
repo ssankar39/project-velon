@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getCollection } from '@/lib/mongodb';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 const SYSTEM_PROMPT = `You are a knowledgeable, friendly personal fitness coach embedded in a workout tracking app called Velon. Your role:
 
@@ -13,8 +15,8 @@ const SYSTEM_PROMPT = `You are a knowledgeable, friendly personal fitness coach 
 - Never give medical advice; recommend seeing a professional for injuries/health concerns.
 - Format responses with markdown for readability (bold, bullet points, etc.).`;
 
-/** Models to try in order — lite has the most generous free-tier limits */
 const MODELS = ['gemini-2.5-flash-lite'] as const;
+const AI_TIMEOUT_MS = 10000;
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
@@ -24,23 +26,24 @@ async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
   for (const model of MODELS) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const response = await ai.models.generateContent({ model, contents: prompt });
+        const response = await Promise.race([
+          ai.models.generateContent({ model, contents: prompt }),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI request timed out')), AI_TIMEOUT_MS)),
+        ]);
         return response.text ?? '';
       } catch (err: unknown) {
         lastError = err;
         const status = (err as { status?: number }).status;
 
         if (status === 429) {
-          // Rate-limited — wait and retry once, then try next model
           if (attempt === 0) {
-            console.warn(`Rate limited on ${model}, retrying in 3s...`);
+            logger.warn(`Rate limited on ${model}, retrying in 3s...`);
             await sleep(3000);
             continue;
           }
-          console.warn(`Rate limited on ${model} after retry, trying next model...`);
-          break; // move to next model
+          logger.warn(`Rate limited on ${model} after retry, trying next model...`);
+          break;
         }
-        // Non-429 error — don't retry
         throw err;
       }
     }
@@ -51,7 +54,9 @@ async function callGemini(ai: GoogleGenAI, prompt: string): Promise<string> {
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, userId, includeWorkoutData } = await req.json();
+    const { userId } = getAuthUser(req);
+    const body = await req.json();
+    const { message, includeWorkoutData } = body;
 
     if (!message) {
       return NextResponse.json({ error: 'message is required' }, { status: 400 });
@@ -62,9 +67,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Gemini API key not configured' }, { status: 500 });
     }
 
-    // Optionally fetch recent workout data for context
     let workoutContext = '';
-    if (includeWorkoutData && userId) {
+    if (includeWorkoutData) {
       workoutContext = await buildWorkoutContext(userId);
     }
 
@@ -78,7 +82,11 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ reply: text || 'I didn\'t get a response — please try again.' }, { status: 200 });
   } catch (error: unknown) {
-    console.error('Chat API error:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    logger.error('Chat API error:', error);
 
     const status = (error as { status?: number }).status;
     if (status === 429) {
@@ -94,16 +102,12 @@ export async function POST(req: NextRequest) {
 
 async function buildWorkoutContext(userId: string): Promise<string> {
   try {
-    const usersCol = await getCollection('User');
-    const user = await usersCol.findOne({ email: userId });
-    if (!user) return 'No user data available.';
-
     const sessCol = await getCollection('WorkoutSession');
     const fourWeeksAgo = new Date();
     fourWeeksAgo.setDate(fourWeeksAgo.getDate() - 28);
 
     const sessions = await sessCol
-      .find({ userId: user._id.toString(), date: { $gte: fourWeeksAgo } })
+      .find({ userId, date: { $gte: fourWeeksAgo } })
       .sort({ date: -1 })
       .limit(20)
       .toArray();
@@ -124,7 +128,7 @@ async function buildWorkoutContext(userId: string): Promise<string> {
 
     return `${sessions.length} sessions in last 4 weeks:\n${lines.join('\n\n')}`;
   } catch (err) {
-    console.error('Failed to build workout context:', err);
+    logger.error('Failed to build workout context:', err);
     return 'Could not retrieve workout data.';
   }
 }

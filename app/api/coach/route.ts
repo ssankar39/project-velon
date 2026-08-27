@@ -4,48 +4,34 @@ import { getCollection } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { runCoachEngine, type CoachInput } from '@/lib/coach-engine';
 import type { WorkoutSession } from '@/app/types/workout';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
-/**
- * POST /api/coach
- *
- * Body: { sessionId: string, userId: string }
- *
- * 1. Fetches the target session + recent history
- * 2. Runs the deterministic coach engine → structured JSON
- * 3. Calls OpenAI to write a human-friendly summary
- * 4. Saves feedback to the session and returns it
- */
 export async function POST(req: NextRequest) {
   try {
-    const { sessionId, userId } = await req.json();
+    const { userId } = getAuthUser(req);
+    const body = await req.json();
+    const { sessionId } = body;
 
-    if (!sessionId || !userId) {
-      return NextResponse.json({ error: 'sessionId and userId required' }, { status: 400 });
+    if (!sessionId) {
+      return NextResponse.json({ error: 'sessionId required' }, { status: 400 });
     }
-
-    // ── Fetch data ────────────────────────────────────────────────────────────
 
     const sessCol = await getCollection('WorkoutSession');
     const exCol = await getCollection('Exercise');
-    const usersCol = await getCollection('User');
 
-    const user = await usersCol.findOne({ email: userId });
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
-
-    const session = await sessCol.findOne({ _id: new ObjectId(sessionId) });
+    const session = await sessCol.findOne({ _id: new ObjectId(sessionId), userId });
     if (!session) return NextResponse.json({ error: 'Session not found' }, { status: 404 });
 
-    // Get last 12 weeks of history
     const twelveWeeksAgo = new Date(session.date);
     twelveWeeksAgo.setDate(twelveWeeksAgo.getDate() - 84);
 
     const recentSessions = await sessCol
-      .find({ userId: user._id.toString(), date: { $gte: twelveWeeksAgo, $lt: session.date }, _id: { $ne: session._id } })
+      .find({ userId, date: { $gte: twelveWeeksAgo, $lt: session.date }, _id: { $ne: session._id } })
       .sort({ date: -1 })
       .limit(60)
       .toArray() as unknown as WorkoutSession[];
 
-    // Build exerciseId → muscles map
     const allExIds = new Set<string>();
     for (const s of [session, ...recentSessions]) {
       for (const e of s.exercises ?? []) allExIds.add(e.exerciseId);
@@ -60,8 +46,6 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // ── Run deterministic engine ──────────────────────────────────────────────
-
     const coachInput: CoachInput = {
       currentSession: { ...session, _id: session._id.toString() } as unknown as WorkoutSession,
       recentSessions,
@@ -70,8 +54,6 @@ export async function POST(req: NextRequest) {
 
     const engineResult = runCoachEngine(coachInput);
 
-    // ── AI summary layer ──────────────────────────────────────────────────────
-
     let summary = buildFallbackSummary(engineResult);
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -79,27 +61,26 @@ export async function POST(req: NextRequest) {
       try {
         summary = await generateAISummary(apiKey, session, engineResult);
       } catch (aiErr) {
-        console.error('AI summary failed, using deterministic fallback:', aiErr);
+        logger.error('AI summary failed, using deterministic fallback:', aiErr);
       }
     }
 
     const feedback = { ...engineResult, summary };
 
-    // ── Save to session ──────────────────────────────────────────────────────
-
     await sessCol.updateOne(
-      { _id: new ObjectId(sessionId) },
+      { _id: new ObjectId(sessionId), userId },
       { $set: { coachFeedback: feedback, updatedAt: new Date() } },
     );
 
     return NextResponse.json(feedback, { status: 200 });
   } catch (error) {
-    console.error('Coach error:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Coach error:', error);
     return NextResponse.json({ error: 'Failed to generate coaching feedback' }, { status: 500 });
   }
 }
-
-// ─── AI Summary (Gemini) ─────────────────────────────────────────────────────
 
 async function generateAISummary(
   apiKey: string,
@@ -116,9 +97,9 @@ Session Summary
 - Give your overall thoughts on this week's session in 1-2 sentences.
 
 Progression
-- Up to 4 bullets, one per exercise, with exact loads/reps. 
+- Up to 4 bullets, one per exercise, with exact loads/reps.
 
-- Give your clear thoughts on progression for each exercise in a concise summary. 
+- Give your clear thoughts on progression for each exercise in a concise summary.
 
 Next Session Targets
 - One bullet per exercise: Exercise: sets x rep-range @ load
@@ -143,16 +124,17 @@ Coach engine analysis:
 ${JSON.stringify(engineResult, null, 2)}`;
 
   const ai = new GoogleGenAI({ apiKey });
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-lite',
-    contents: userPrompt,
-  });
+  const response = await Promise.race([
+    ai.models.generateContent({
+      model: 'gemini-2.5-flash-lite',
+      contents: userPrompt,
+    }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI request timed out')), 10000)),
+  ]);
 
   const text = response.text ?? '';
   return text.trim() || buildFallbackSummary(engineResult);
 }
-
-// ─── Deterministic Fallback Summary ──────────────────────────────────────────
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function buildFallbackSummary(result: any): string {
@@ -181,7 +163,6 @@ function buildFallbackSummary(result: any): string {
   const warnings: SummaryWarning[] = Array.isArray(result.warnings) ? result.warnings : [];
   const volume: SummaryVolume[] = Array.isArray(result.volumeBalance) ? result.volumeBalance : [];
 
-  // Keep a single best adjustment per exercise to avoid conflicting advice.
   const bestByExercise = new Map<string, SummaryAdjustment>();
   for (const adj of adjustments) {
     const key = String(adj.exerciseName ?? '');
@@ -194,7 +175,6 @@ function buildFallbackSummary(result: any): string {
   }
 
   const topAdjustments = [...bestByExercise.values()].slice(0, 4);
-  // Keep for internal training/analytics usage even though we omit from user-facing summary.
   void warnings;
   void volume;
 

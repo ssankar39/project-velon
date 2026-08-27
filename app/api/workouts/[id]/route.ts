@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+import { getAuthUser } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
+import { logger } from '@/lib/logger';
 
 export async function DELETE(
   req: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = getAuthUser(req);
     const params = await context.params;
     const { id } = params;
 
@@ -17,9 +20,17 @@ export async function DELETE(
       );
     }
 
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch {
+      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+    }
+
     const workoutsCollection = await getCollection('Workout');
     const result = await workoutsCollection.deleteOne({
-      _id: new ObjectId(id),
+      _id: objectId,
+      userId,
     });
 
     if (result.deletedCount === 0) {
@@ -31,7 +42,10 @@ export async function DELETE(
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error('Error deleting workout:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error deleting workout:', error);
     return NextResponse.json(
       { error: 'Failed to delete workout' },
       { status: 500 }

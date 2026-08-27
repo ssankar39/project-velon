@@ -6,35 +6,20 @@ import { StatsGrid } from './StatsGrid';
 import { Loader2 } from 'lucide-react';
 import { ActivityGraph } from '../ActivityGraph';
 import { DatePicker } from '../DatePicker';
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface DashboardModuleProps {
   stats: UserStats;
 }
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
-}
-
 export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initialStats }) => {
+  const { user: currentUser } = useAuth();
   const [stats, setStats] = useState<UserStats>(initialStats);
   const [loading, setLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [weightGoal, setWeightGoal] = useState<number | null>(null);
   const [showGoalInput, setShowGoalInput] = useState(false);
   const [goalInput, setGoalInput] = useState('');
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-      }
-    }
-  }, []);
 
   useEffect(() => {
     if (currentUser) {
@@ -54,7 +39,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
         setShowGoalInput(!data.weightGoal);
       }
     } catch (error) {
-      console.error('Error fetching weight goal:', error);
+      logger.error('Error fetching weight goal:', error);
     }
   };
 
@@ -67,7 +52,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
       const data = await response.json();
       setStats(data);
     } catch (error) {
-      console.error('Error fetching stats:', error);
+      logger.error('Error fetching stats:', error);
     } finally {
       setLoading(false);
     }
@@ -90,7 +75,7 @@ export const DashboardModule: React.FC<DashboardModuleProps> = ({ stats: initial
         setGoalInput('');
       }
     } catch (error) {
-      console.error('Error saving weight goal:', error);
+      logger.error('Error saving weight goal:', error);
       alert('Failed to save weight goal');
     }
   };

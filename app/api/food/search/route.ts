@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -61,6 +62,7 @@ async function searchUSDA(query: string, dataTypes?: string[], brandOwner?: stri
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(searchCriteria),
+      signal: AbortSignal.timeout(10000),
     }
   );
 
@@ -143,7 +145,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ foods }, { status: 200 });
   } catch (error) {
-    console.error('Error searching foods:', error);
+    logger.error('Error searching foods:', error);
     return NextResponse.json(
       { error: 'Failed to search foods' },
       { status: 500 }

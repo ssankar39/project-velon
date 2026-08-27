@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 type WeightTimeframe = 'daily' | 'weekly' | 'monthly';
 
@@ -16,12 +18,6 @@ interface ActivityGraphProps {
   metricType?: 'calories' | 'workouts' | 'weight' | 'fasting';
   userId?: string;
   weightGoal?: number | null;
-}
-
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
 }
 
 interface Workout {
@@ -156,6 +152,7 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   userId,
   weightGoal,
 }) => {
+  const { user: currentUser } = useAuth();
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [data, setData] = useState<DataPoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -178,14 +175,11 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
   const fetchGraphData = async () => {
     try {
       setLoading(true);
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
+      const userEmail = userId || currentUser?.email;
+      if (!userEmail) {
         setDefaultData();
         return;
       }
-
-      const user: AuthUser = JSON.parse(storedUser);
-      const userEmail = userId || user.email;
 
       let chartData: DataPoint[] = [];
 
@@ -300,7 +294,7 @@ export const ActivityGraph: React.FC<ActivityGraphProps> = ({
 
       setData(chartData);
     } catch (error) {
-      console.error('Error fetching graph data:', error);
+      logger.error('Error fetching graph data:', error);
       setDefaultData();
     } finally {
       setLoading(false);

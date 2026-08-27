@@ -1,271 +1,157 @@
-# Velon - Fitness Tracking Dashboard
+# Project Velon
 
-A modern, full-stack fitness tracking web application built with Next.js 14, TypeScript, and MongoDB. Track your calories, workouts, fasting sessions, and health metrics all in one beautiful glassmorphic interface.
+Full-stack fitness tracking app — workouts, meals, fasting, health metrics, and AI coaching.
 
-![Velon Dashboard](https://img.shields.io/badge/Status-Active-success)
-![Next.js](https://img.shields.io/badge/Next.js-14-black)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
-![TailwindCSS](https://img.shields.io/badge/TailwindCSS-3.4-38bdf8)
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue)
+![Tailwind](https://img.shields.io/badge/Tailwind-4.1-38bdf8)
+![MongoDB](https://img.shields.io/badge/MongoDB-7-green)
 
-## ✨ Features
+## Features
 
-### 🍽️ **Calorie Tracking**
-- Log meals with custom calorie counts
-- Categorize by meal type (breakfast, lunch, dinner, snacks)
-- View daily calorie totals and progress toward goals
-- Visual progress indicators
+- **Workout Logger** — Log sets/reps/weight, 1300+ seeded exercises, AI-powered session parsing
+- **AI Coach** — Post-workout analysis with progression recommendations, volume balance, and plateau detection
+- **Calorie Tracker** — USDA food search, macro tracking, meal logging with date filtering
+- **Fasting Timer** — Multiple protocols (16:8, 18:6, 20:4, 24h), real-time progress
+- **Health Metrics** — Weight, body fat, BMI, BMR/TDEE calculations with progress charts
+- **Health Calculators** — BMI, BMR, TDEE, body fat percentage
+- **Responsive UI** — Glassmorphic dark theme, mobile-first
 
-### ⏱️ **Intermittent Fasting Timer**
-- Multiple fasting protocols (16:8, 18:6, 20:4, 24-hour, custom)
-- Real-time fasting progress tracking
-- Active session monitoring
-- Fasting history and analytics
+## Tech Stack
 
-### 💪 **Workout Logger**
-- Search 1300+ exercises from integrated exercise database
-- Log sets, reps, and weight (lbs/kg)
-- Track exercises by body part and target muscles
-- Display format: "Dumbbell Curls, 3×10 @ 35lbs"
-- Automatic calorie burn calculation
-- Workout history with date filtering
+| Layer | Tech |
+|-------|------|
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS 4 |
+| Backend | Next.js API routes, proxy.ts (auth middleware) |
+| Database | MongoDB 7 (native driver, no Mongoose) |
+| Auth | JWT session cookies via `jose`, HttpOnly cookies |
+| AI | Google Gemini (`@google/genai`) |
+| External | USDA FoodData Central API |
 
-### 📊 **Health Metrics**
-- Track weight, body fat percentage, BMI
-- Calculate BMR (Basal Metabolic Rate)
-- Calculate TDEE (Total Daily Energy Expenditure)
-- Visual progress charts and graphs
-
-### 🧮 **Health Calculators**
-- BMI Calculator
-- BMR Calculator (with activity level multipliers)
-- TDEE Calculator
-- Body Fat Percentage calculator
-
-### 📱 **Responsive Design**
-- Mobile-first approach
-- Hamburger menu navigation on mobile
-- Touch-friendly interface
-- Optimized for all screen sizes (mobile, tablet, desktop)
-
-### 🎨 **Modern UI/UX**
-- Glassmorphic design
-- Smooth animations and transitions
-- Dark theme with purple/violet accents
-- Live activity cards
-- Real-time data updates
-
-## 🛠️ Tech Stack
-
-### Frontend
-- **Framework:** Next.js 14 (App Router)
-- **Language:** TypeScript
-- **Styling:** TailwindCSS
-- **Icons:** Lucide React
-- **State Management:** React Hooks
-
-### Backend
-- **API:** Next.js API Routes
-- **Database:** MongoDB with Mongoose
-- **Authentication:** Custom JWT-based auth
-- **External API:** ExerciseDB API integration
-
-### Development
-- **Package Manager:** npm
-- **Linting:** ESLint
-- **Code Quality:** TypeScript strict mode
-
-## 📦 Installation
+## Quick Start
 
 ### Prerequisites
-- Node.js 18+ installed
-- MongoDB instance (local or cloud)
-- npm or yarn package manager
+- Node.js 18+
+- Docker (for MongoDB)
 
-### Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd FitnessWebsite
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Set up environment variables**
-   
-   Create a `.env.local` file in the root directory:
-   ```env
-   MONGODB_URI=your_mongodb_connection_string
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Open your browser**
-   
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-## 🚀 Build & Deploy
-
-### Production Build
+### 1. Start MongoDB
 ```bash
-npm run build
-npm start
+docker run -d --name velon-mongo -p 27017:27017 mongo:7
 ```
 
-### Development Mode
+### 2. Install dependencies
+```bash
+npm install
+```
+
+### 3. Configure environment
+```bash
+cp .env.example .env.local
+```
+
+Edit `.env.local`:
+```env
+MONGODB_URI=mongodb://localhost:27017/fitness_website
+JWT_SECRET=<generate with: node -e "console.log(require('crypto').randomBytes(64).toString('hex'))">
+GEMINI_API_KEY=       # optional, for AI coach
+USDA_API_KEY=DEMO_KEY
+```
+
+### 4. Create indexes (one-time)
+```bash
+node scripts/create-indexes.mjs
+```
+
+### 5. Run
 ```bash
 npm run dev
 ```
 
-### Linting
-```bash
-npm run lint
-```
+Open [http://localhost:3000](http://localhost:3000)
 
-## 📁 Project Structure
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start dev server (Turbopack) |
+| `npm run build` | Production build |
+| `npm start` | Start production server |
+| `npx tsc --noEmit` | Typecheck |
+| `npx eslint app/ lib/ --ext .ts,.tsx` | Lint |
+| `node scripts/smoke-test.mjs` | Run smoke tests (25 tests) |
+| `node scripts/create-indexes.mjs` | Create MongoDB indexes |
+
+## Project Structure
 
 ```
-FitnessWebsite/
 ├── app/
-│   ├── api/                    # API routes
-│   │   ├── auth/              # Authentication endpoints
-│   │   ├── workouts/          # Workout CRUD operations
-│   │   ├── meals/             # Meal tracking endpoints
-│   │   ├── fasting/           # Fasting session management
-│   │   ├── metrics/           # Health metrics endpoints
-│   │   ├── exercises/         # Exercise search API
-│   │   └── user/              # User preferences & stats
-│   ├── components/            # React components
-│   │   ├── Dashboard/         # Dashboard module
-│   │   ├── Calories/          # Calorie tracker
-│   │   ├── Workouts/          # Workout logger
-│   │   ├── Fasting/           # Fasting timer
-│   │   ├── Metrics/           # Metrics tracker
-│   │   ├── Calculators/       # Health calculators
-│   │   ├── Profile/           # User profile
-│   │   └── Settings/          # Settings page
-│   ├── types/                 # TypeScript type definitions
-│   ├── utils/                 # Utility functions
-│   ├── landing/               # Landing page
-│   ├── login/                 # Login page
-│   ├── signup/                # Signup page
-│   ├── layout.tsx             # Root layout
-│   ├── page.tsx               # Main dashboard
-│   └── globals.css            # Global styles
+│   ├── api/                  # API routes (24 endpoints)
+│   │   ├── auth/             # login, signup, logout, me, status
+│   │   ├── chat/             # AI coach chat
+│   │   ├── coach/            # Post-workout AI analysis
+│   │   ├── exercises/        # search, seed, import, export
+│   │   ├── fasting/          # fasting sessions
+│   │   ├── food/             # USDA search, image analysis
+│   │   ├── meals/            # meal tracking
+│   │   ├── metrics/          # health metrics
+│   │   ├── user/             # profile, preferences, stats
+│   │   ├── workout-sessions/ # sessions, parse, planned
+│   │   ├── workout-templates/# templates CRUD
+│   │   └── workouts/         # legacy workout CRUD
+│   ├── components/           # React components
+│   ├── hooks/useAuth.ts      # Client auth hook
+│   ├── types/                # TypeScript types
+│   └── utils/                # Utility functions
 ├── lib/
-│   └── mongodb.ts             # MongoDB connection
-├── public/                     # Static assets
+│   ├── auth.ts               # JWT helpers, session management
+│   ├── coach-engine.ts       # Deterministic coaching logic
+│   ├── csv.ts                # CSV parse/serialize
+│   ├── logger.ts             # Structured logger with PII stripping
+│   └── mongodb.ts            # MongoDB connection
+├── scripts/
+│   ├── create-indexes.mjs    # Database index setup
+│   └── smoke-test.mjs        # API smoke tests
+├── proxy.ts                  # Auth middleware (Next.js 16)
 └── package.json
 ```
 
-## 🔌 API Routes
+## API Endpoints
 
-### Authentication
-- `POST /api/auth/signup` - Create new user account
-- `POST /api/auth/login` - User login
+All endpoints require auth via session cookie unless noted.
 
-### Workouts
-- `GET /api/workouts` - Get user workouts (with date filter)
-- `POST /api/workouts` - Create new workout
-- `DELETE /api/workouts/[id]` - Delete workout
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/signup` | Create account |
+| POST | `/api/auth/login` | Login (rate-limited) |
+| POST | `/api/auth/logout` | Clear session |
+| GET | `/api/auth/me` | Current user |
+| GET | `/api/auth/status` | Auth status |
+| GET/POST | `/api/workout-sessions` | List/create sessions |
+| GET/PUT/DELETE | `/api/workout-sessions/[id]` | Session CRUD |
+| POST | `/api/workout-sessions/parse` | AI-powered workout parsing |
+| POST | `/api/workout-sessions/planned` | Create planned session |
+| GET/POST | `/api/workout-templates` | List/create templates |
+| GET/PUT/DELETE | `/api/workout-templates/[id]` | Template CRUD |
+| POST | `/api/coach` | Generate AI coaching feedback |
+| POST | `/api/chat` | AI coach chat |
+| GET/POST | `/api/meals` | List/create meals |
+| DELETE | `/api/meals/[id]` | Delete meal |
+| GET/POST | `/api/fasting` | List/create fasting sessions |
+| PATCH | `/api/fasting/[id]` | Update fasting session |
+| GET/POST | `/api/metrics` | List/create health metrics |
+| GET/POST | `/api/exercises` | List/create exercises |
+| GET | `/api/exercises/search` | Search exercises |
+| POST | `/api/exercises/seed` | Seed exercise database |
+| POST | `/api/exercises/import` | CSV import |
+| GET | `/api/exercises/export` | CSV export |
+| GET | `/api/food/search` | USDA food search |
+| POST | `/api/food/analyze-image` | Food image analysis (stub) |
+| GET/POST | `/api/user/preferences` | User preferences |
+| PUT | `/api/user/profile` | Update profile |
+| GET | `/api/user/stats` | Dashboard stats |
+| GET/POST | `/api/workouts` | Legacy workout CRUD |
+| DELETE | `/api/workouts/[id]` | Delete legacy workout |
 
-### Meals
-- `GET /api/meals` - Get user meals (with date filter)
-- `POST /api/meals` - Create new meal
-- `DELETE /api/meals/[id]` - Delete meal
+## License
 
-### Fasting
-- `GET /api/fasting` - Get user fasting sessions
-- `POST /api/fasting` - Create/start fasting session
-- `DELETE /api/fasting/[id]` - Delete fasting session
-
-### Metrics
-- `GET /api/metrics` - Get user health metrics
-- `POST /api/metrics` - Create new metric entry
-
-### User
-- `GET /api/user/profile` - Get user profile
-- `GET /api/user/stats` - Get user statistics
-- `GET /api/user/preferences` - Get user preferences
-- `POST /api/user/preferences` - Update user preferences
-
-### Exercises
-- `GET /api/exercises/search?q={query}` - Search exercises
-
-## 🎯 Key Features Explained
-
-### Responsive Design
-- **Mobile (<768px):** Hamburger menu, stacked layouts, hidden sidebars
-- **Tablet (768px-1024px):** Optimized grid layouts, collapsible sidebars
-- **Desktop (>1024px):** Full sidebar navigation, multi-column layouts
-
-### Workout Weight Tracking
-Workouts now support weight tracking with unit selection:
-```typescript
-{
-  name: "Dumbbell Curls",
-  sets: 3,
-  reps: 10,
-  weight: 35,
-  weightUnit: "lbs"
-}
-```
-Display format: "3×10 @ 35lbs"
-
-### Glassmorphic UI
-Custom glass effects using Tailwind utilities:
-```css
-.glass {
-  background: rgba(20, 20, 35, 0.7);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-```
-
-## 🎨 Color Scheme
-
-- **Primary Purple:** `#8b5cf6`
-- **Secondary Violet:** `#a78bfa`
-- **Accent Yellow:** `#fbbf24`
-- **Background Dark:** `#0a0a0f`
-- **Glass Overlay:** `rgba(20, 20, 35, 0.7)`
-
-## 📱 Responsive Breakpoints
-
-```javascript
-// Tailwind breakpoints
-sm: '640px'   // Small devices
-md: '768px'   // Medium devices (tablets)
-lg: '1024px'  // Large devices (desktops)
-xl: '1280px'  // Extra large devices
-```
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 🙏 Acknowledgments
-
-- Exercise data powered by [ExerciseDB API](https://rapidapi.com/justin-WFnsXH_t6/api/exercisedb)
-- Icons by [Lucide React](https://lucide.dev/)
-- UI inspiration from modern fitness apps
-
-## 📞 Support
-
-For support, email sarveshwarsankar39@gmail.com or open an issue in the repository.
-
----
-
-**Built with ❤️ using Next.js and TailwindCSS**
+Public - Open Source

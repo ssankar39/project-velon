@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 interface PlannedExerciseInput {
   exerciseId?: string;
@@ -63,22 +65,18 @@ function buildPlannedExercises(exercises: PlannedExerciseInput[]) {
 /** POST /api/workout-sessions/planned – create a planned session */
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = getAuthUser(req);
     const body = await req.json();
-    const { userId, date, goal, exercises, templateName } = body as {
-      userId?: string;
+    const { date, goal, exercises, templateName } = body as {
       date?: string;
       goal?: 'hypertrophy' | 'strength' | 'endurance';
       exercises?: PlannedExerciseInput[];
       templateName?: string;
     };
 
-    if (!userId || !date || !goal || !Array.isArray(exercises) || exercises.length === 0) {
-      return NextResponse.json({ error: 'Missing required fields (userId, date, goal, exercises)' }, { status: 400 });
+    if (!date || !goal || !Array.isArray(exercises) || exercises.length === 0) {
+      return NextResponse.json({ error: 'Missing required fields (date, goal, exercises)' }, { status: 400 });
     }
-
-    const usersCol = await getCollection('User');
-    const user = await usersCol.findOne({ email: userId });
-    if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const now = new Date();
     const plannedExercises = buildPlannedExercises(exercises);
@@ -91,7 +89,7 @@ export async function POST(req: NextRequest) {
     }
 
     const doc = {
-      userId: user._id.toString(),
+      userId,
       templateId: body.templateId ?? null,
       templateName: templateName ?? null,
       date: new Date(date),
@@ -112,7 +110,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ _id: result.insertedId.toString(), ...doc }, { status: 201 });
   } catch (error) {
-    console.error('Error creating planned session:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error creating planned session:', error);
     return NextResponse.json({ error: 'Failed to create planned session' }, { status: 500 });
   }
 }

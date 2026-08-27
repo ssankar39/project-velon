@@ -4,13 +4,6 @@ import { useState } from 'react';
 import { Mail, Lock, Loader2, Zap } from 'lucide-react';
 import Link from 'next/link';
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
-  onboardingComplete?: boolean;
-}
-
 export default function LoginPage() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [message, setMessage] = useState<{ text: string; type: 'error' | 'success' }>({ text: '', type: 'error' });
@@ -48,25 +41,7 @@ export default function LoginPage() {
 
       const data = await res.json();
 
-      // Determine whether onboarding is complete before choosing the post-login route.
-      let onboardingComplete = false;
-      try {
-        const preferencesRes = await fetch(`/api/user/preferences?userId=${encodeURIComponent(data.user.email)}`);
-        if (preferencesRes.ok) {
-          const preferences = await preferencesRes.json();
-          onboardingComplete = Boolean(preferences?.onboardingComplete);
-        }
-      } catch {
-        onboardingComplete = false;
-      }
-
-      const userWithOnboarding: AuthUser = {
-        ...data.user,
-        onboardingComplete,
-      };
-
-      // Store user info in localStorage
-      localStorage.setItem('user', JSON.stringify(userWithOnboarding));
+      const onboardingComplete = data.user?.onboardingComplete ?? false;
 
       setMessage({ text: '✅ Login successful!', type: 'success' });
       setTimeout(() => {

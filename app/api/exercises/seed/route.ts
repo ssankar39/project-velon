@@ -1,11 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 import { EXERCISE_SEED } from '@/app/data/exercise-seed';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
+    const { userId } = getAuthUser(req);
+
+    // Only admin users can seed — for now, allow any authenticated user
+    // TODO: Add admin role check
+    void userId;
+
     const col = await getCollection('Exercise');
     const count = await col.countDocuments({ isCustom: false });
 
@@ -13,13 +21,11 @@ export async function POST() {
       return NextResponse.json({ message: 'Exercises already seeded', count }, { status: 200 });
     }
 
-    // Drop existing non-custom exercises and re-seed
     await col.deleteMany({ isCustom: false });
     const now = new Date();
     const docs = EXERCISE_SEED.map(e => ({ ...e, createdAt: now, updatedAt: now }));
     const result = await col.insertMany(docs);
 
-    // Create indexes for fast search
     await col.createIndex({ name: 'text', aliases: 'text' });
     await col.createIndex({ primaryMuscles: 1 });
     await col.createIndex({ equipment: 1 });
@@ -31,7 +37,10 @@ export async function POST() {
       { status: 201 },
     );
   } catch (error) {
-    console.error('Seed error:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Seed error:', error);
     return NextResponse.json({ error: 'Failed to seed exercises' }, { status: 500 });
   }
 }

@@ -8,7 +8,9 @@ import {
   AlertTriangle, ArrowUp, ArrowDown, Minus, Upload,
   Info, Star, Zap, Target, Clock, Edit, RefreshCw, MessageCircle,
 } from 'lucide-react';
+import { logger } from '@/lib/logger';
 import { DatePicker } from '../DatePicker';
+import { useAuth, AuthUser } from '@/app/hooks/useAuth';
 
 // ─── Types (mirrors types/workout.ts, kept inline for component isolation) ───
 
@@ -95,7 +97,7 @@ interface CoachFeedback {
   summary: string;
 }
 
-interface AuthUser { id: string; email: string; name?: string; }
+
 
 interface ParsedWorkoutExercise {
   exerciseId: string;
@@ -220,17 +222,10 @@ async function createTemplateWithResolution(params: {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export const WorkoutsModule: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('log');
   // seed flag kept intentionally disabled
   const [/* seeded */] = useState(true);
-
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (stored) {
-      try { setCurrentUser(JSON.parse(stored)); } catch { /* skip */ }
-    }
-  }, []);
 
   // Seed endpoint still available at POST /api/exercises/seed if needed manually
 
@@ -527,7 +522,7 @@ function SessionLogger({ user }: { user: AuthUser | null }) {
         }, 4000);
       }
     } catch (e) {
-      console.error('Save error:', e);
+      logger.error('Save error:', e);
       alert('Failed to save session');
     } finally {
       setSaving(false);
@@ -1216,7 +1211,7 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
         setSelectedSession(prev => prev && prev._id === sessionId ? { ...prev, coachFeedback: feedback } : prev);
       }
     } catch (e) {
-      console.error('Coach error:', e);
+      logger.error('Coach error:', e);
       alert('Failed to get coaching feedback');
     } finally {
       setCoachLoading(null);
@@ -1376,7 +1371,7 @@ function SessionHistory({ user }: { user: AuthUser | null }) {
         alert('Session updated successfully!');
       }
     } catch (e) {
-      console.error('Save error:', e);
+      logger.error('Save error:', e);
       alert('Failed to save changes');
     } finally {
       setEditSaving(false);

@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { FastingState } from '@/app/types';
 import { Clock, Loader2 } from 'lucide-react';
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface FastingTrackerProps {
   onFastingUpdate: (state: FastingState, progress: number) => void;
@@ -15,13 +17,8 @@ interface FormState {
   startTime: string;
 }
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
-}
-
 export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate, onStateChange }) => {
+  const { user: currentUser } = useAuth();
   const [formState, setFormState] = useState<FormState>({
     protocol: '16',
     customHours: 16,
@@ -39,19 +36,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
   const [timeRemaining, setTimeRemaining] = useState<string>('');
   const [progressPercent, setProgressPercent] = useState<number>(0);
   const [loading, setLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [sessionId, setSessionId] = useState<string>('');
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-      }
-    }
-  }, []);
 
   // Fetch active fasting session on mount
   useEffect(() => {
@@ -86,7 +71,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
         });
       }
     } catch (error) {
-      console.error('Error fetching active fasting session:', error);
+      logger.error('Error fetching active fasting session:', error);
     }
   };
 
@@ -190,7 +175,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
       // Trigger refresh of sidebar and dashboard
       onStateChange?.();
     } catch (error) {
-      console.error('Error starting fasting session:', error);
+      logger.error('Error starting fasting session:', error);
       alert('Failed to start fasting session');
     } finally {
       setLoading(false);
@@ -199,12 +184,12 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
 
   const handleEndFast = async () => {
     if (!sessionId || !currentUser) {
-      console.error('Cannot end fast - sessionId:', sessionId, 'currentUser:', currentUser);
+      logger.error('Cannot end fast - missing session or user');
       alert('Cannot end fast: Session not found');
       return;
     }
 
-    console.log('Ending fast session:', sessionId);
+    logger.debug('Ending fast session:', sessionId);
 
     try {
       setLoading(true);
@@ -217,11 +202,11 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
         }),
       });
 
-      console.log('End fast response status:', response.status);
+      logger.debug('End fast response status:', response.status);
 
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Error response:', errorData);
+        logger.error('Error response:', errorData);
         throw new Error('Failed to end fasting session');
       }
 
@@ -239,7 +224,7 @@ export const FastingTracker: React.FC<FastingTrackerProps> = ({ onFastingUpdate,
       // Trigger refresh of sidebar and dashboard
       onStateChange?.();
     } catch (error) {
-      console.error('Error ending fasting session:', error);
+      logger.error('Error ending fasting session:', error);
       alert('Failed to end fasting session');
     } finally {
       setLoading(false);

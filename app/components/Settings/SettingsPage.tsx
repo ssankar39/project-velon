@@ -2,12 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Activity, Save, Loader2 } from 'lucide-react';
-
-interface CurrentUser {
-  id: string;
-  email: string;
-  name?: string;
-}
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface PreferencesData {
   age: string;
@@ -21,7 +17,7 @@ interface PreferencesData {
 }
 
 export const SettingsPage: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' }>({ text: '', type: 'success' });
   const [preferences, setPreferences] = useState<PreferencesData>({
@@ -42,17 +38,10 @@ export const SettingsPage: React.FC = () => {
   });
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        setCurrentUser(user);
-        fetchPreferences(user.email);
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-      }
+    if (currentUser) {
+      fetchPreferences(currentUser.email);
     }
-  }, []);
+  }, [currentUser]);
 
   const fetchPreferences = async (email: string) => {
     try {
@@ -78,7 +67,7 @@ export const SettingsPage: React.FC = () => {
         });
       }
     } catch (error) {
-      console.error('Error fetching preferences:', error);
+      logger.error('Error fetching preferences:', error);
     }
   };
 
@@ -132,7 +121,7 @@ export const SettingsPage: React.FC = () => {
 
       setMessage({ text: 'Settings updated successfully! TDEE calculations will now use these values.', type: 'success' });
     } catch (error) {
-      console.error('Error updating preferences:', error);
+      logger.error('Error updating preferences:', error);
       setMessage({ text: 'Failed to update preferences', type: 'error' });
     } finally {
       setLoading(false);

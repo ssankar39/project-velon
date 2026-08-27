@@ -5,17 +5,13 @@ import { Meal, MealType } from '@/app/types';
 import { Plus, Trash2, Calendar, Loader2, Search, X } from 'lucide-react';
 import { DatePicker } from '../DatePicker';
 import { calculateBMR_KatchMcArdle, atwaterAdjustMacros } from '@/app/utils/calculations';
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface CalorieTrackerProps {
   onMealsUpdate: (meals: Meal[]) => void;
   selectedDate?: Date;
   onDateChange?: (date: Date) => void;
-}
-
-interface CurrentUser {
-  id: string;
-  email: string;
-  name?: string;
 }
 
 interface UserPreferences {
@@ -51,9 +47,9 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   selectedDate,
   onDateChange,
 }) => {
+  const { user: currentUser } = useAuth();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
   const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
   const [currentWeight, setCurrentWeight] = useState<number>(0);
   const [latestBodyFat, setLatestBodyFat] = useState<number | null>(null);
@@ -72,18 +68,6 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
   const [selectedServingUnit, setSelectedServingUnit] = useState('g');
   // Store original per-100g nutrient values to avoid compounding errors
   const [nutrientsPer100g, setNutrientsPer100g] = useState<{ calories: number; protein: number; carbs: number; fat: number } | null>(null);
-
-  // Get current user from localStorage
-  useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-      }
-    }
-  }, []);
 
   // Load user preferences, current weight, and body fat
   useEffect(() => {
@@ -119,7 +103,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
         setUserPreferences(data);
       }
     } catch (error) {
-      console.error('Error fetching user preferences:', error);
+      logger.error('Error fetching user preferences:', error);
     }
   };
 
@@ -134,7 +118,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
         setCurrentWeight(data.currentWeight || 0);
       }
     } catch (error) {
-      console.error('Error fetching current weight:', error);
+      logger.error('Error fetching current weight:', error);
     }
   };
 
@@ -153,7 +137,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
         if (withBf) setLatestBodyFat(withBf.bodyFat as number);
       }
     } catch (error) {
-      console.error('Error fetching body fat:', error);
+      logger.error('Error fetching body fat:', error);
     }
   };
 
@@ -205,7 +189,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
     const proteinGoal = Math.round((tdee * 0.25) / 4);
     const fatGoal = Math.round((tdee * 0.25) / 9);
 
-    console.log('Macro Calculation:', {
+    logger.debug('Macro Calculation:', {
       equation,
       bodyFat: latestBodyFat,
       weight: currentWeight,
@@ -275,7 +259,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       setMeals(enriched);
       onMealsUpdate(enriched);
     } catch (error) {
-      console.error('Error fetching meals:', error);
+      logger.error('Error fetching meals:', error);
     } finally {
       setLoading(false);
     }
@@ -357,7 +341,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       const data = await response.json();
       setSearchResults(data.foods || []);
     } catch (error) {
-      console.error('Error searching foods:', error);
+      logger.error('Error searching foods:', error);
       alert('Failed to search foods. Please try again.');
     } finally {
       setSearching(false);
@@ -590,7 +574,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       setSelectedServingUnit('g');
       
     } catch (error) {
-      console.error('Error adding meal:', error);
+      logger.error('Error adding meal:', error);
       alert('Failed to add meal');
     } finally {
       setLoading(false);
@@ -614,7 +598,7 @@ export const CalorieTracker: React.FC<CalorieTrackerProps> = ({
       setMeals(updatedMeals);
       onMealsUpdate(updatedMeals);
     } catch (error) {
-      console.error('Error deleting meal:', error);
+      logger.error('Error deleting meal:', error);
       alert('Failed to delete meal');
     } finally {
       setLoading(false);

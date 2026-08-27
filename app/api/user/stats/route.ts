@@ -1,42 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
+    const { userId } = getAuthUser(req);
     const searchParams = req.nextUrl.searchParams;
-    const email = searchParams.get('userId');
     const date = searchParams.get('date');
 
-    if (!email) {
-      return NextResponse.json(
-        { error: 'userId (email) is required' },
-        { status: 400 }
-      );
-    }
-
-    const usersCollection = await getCollection('User');
-    const user = await usersCollection.findOne({ email });
-
-    if (!user) {
-      return NextResponse.json(
-        {
-          totalCalories: 0,
-          calorieGoal: 2000,
-          caloriesRemaining: 2000,
-          workoutCount: 0,
-          workoutGoal: 5,
-          latestWeight: null,
-          fastingStats: { active: false, protocol: null },
-        },
-        { status: 200 }
-      );
-    }
-
-    const userId = user._id.toString();
-
-    // Get user preferences for goals
     const preferencesCollection = await getCollection('UserPreferences');
     const userPreferences = await preferencesCollection.findOne({ userId });
 
@@ -47,14 +21,19 @@ export async function GET(req: NextRequest) {
 
     const preferences = userPreferences || defaultPreferences;
 
-    // Calculate date range for today or specified date
-    const targetDate = date ? new Date(date) : new Date();
-    const startOfDay = new Date(targetDate);
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(targetDate);
-    endOfDay.setHours(23, 59, 59, 999);
+    // Fix: Parse date manually to avoid UTC/local timezone off-by-one
+    let startOfDay: Date;
+    let endOfDay: Date;
+    if (date) {
+      const [year, month, day] = date.split('-').map(Number);
+      startOfDay = new Date(year, month - 1, day, 0, 0, 0, 0);
+      endOfDay = new Date(year, month - 1, day, 23, 59, 59, 999);
+    } else {
+      const now = new Date();
+      startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+      endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    }
 
-    // Get meals for the day
     const mealsCollection = await getCollection('Meal');
     const meals = await mealsCollection
       .find({
@@ -67,26 +46,23 @@ export async function GET(req: NextRequest) {
       .toArray();
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const caloriesConsumed = meals.reduce((sum, meal: any) => sum + (meal.calories || 0), 0);
+    const caloriesConsumed = meals.reduce((sum: number, meal: any) => sum + (meal.calories || 0), 0);
 
-    // Get latest metric (weight)
     const metricsCollection = await getCollection('Metric');
     const latestMetric = await metricsCollection
       .findOne({ userId }, { sort: { timestamp: -1 } });
 
-    // Get metric from a month ago to calculate weight change
     const monthAgo = new Date();
     monthAgo.setMonth(monthAgo.getMonth() - 1);
     const previousMetric = await metricsCollection
       .findOne(
-        { 
+        {
           userId,
           timestamp: { $lte: monthAgo }
-        }, 
+        },
         { sort: { timestamp: -1 } }
       );
 
-    // Calculate weight change
     let weightChange = 0;
     if (latestMetric && 'weight' in latestMetric && typeof latestMetric.weight === 'number') {
       if (previousMetric && 'weight' in previousMetric && typeof previousMetric.weight === 'number') {
@@ -94,34 +70,31 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get active fasting session or most recent completed one
     const fastingCollection = await getCollection('FastingSession');
     const now = new Date();
     const activeFasting = await fastingCollection
-      .findOne({ 
-        userId, 
+      .findOne({
+        userId,
         isActive: true,
         endTime: { $gt: now }
       }, { sort: { startTime: -1 } });
 
     let fastingProgress = 0;
     let fastingGoal = 16;
-    
+
     if (activeFasting) {
-      // Active session - show current progress
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hoursElapsed = (now.getTime() - new Date((activeFasting as any).startTime).getTime()) / (1000 * 60 * 60);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       fastingGoal = parseInt((activeFasting as any).protocol) || 16;
       fastingProgress = Math.min(hoursElapsed, fastingGoal);
     } else {
-      // No active session - show most recent completed fast from today
       const startOfToday = new Date();
       startOfToday.setHours(0, 0, 0, 0);
-      
+
       const completedFasting = await fastingCollection
-        .findOne({ 
-          userId, 
+        .findOne({
+          userId,
           isActive: false,
           completedAt: { $gte: startOfToday }
         }, { sort: { completedAt: -1 } });
@@ -138,7 +111,6 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get workouts this week
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
     weekStart.setHours(0, 0, 0, 0);
@@ -151,7 +123,6 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const stats = {
       caloriesConsumed,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -171,7 +142,10 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(stats, { status: 200 });
   } catch (error) {
-    console.error('Error fetching user stats:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error fetching user stats:', error);
     return NextResponse.json(
       { error: 'Failed to fetch user stats' },
       { status: 500 }

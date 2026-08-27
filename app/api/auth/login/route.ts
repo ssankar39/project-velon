@@ -1,13 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
-import bcrypt from 'bcryptjs';  // For password hashing
+import bcrypt from 'bcryptjs';
+import { createSessionToken, setSessionCookie } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+const MAX_ATTEMPTS = 5;
+const WINDOW_MS = 15 * 60 * 1000;
+
+function checkRateLimit(email: string): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const entry = loginAttempts.get(email);
+
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(email, { count: 1, resetAt: now + WINDOW_MS });
+    return { allowed: true };
+  }
+
+  if (entry.count >= MAX_ATTEMPTS) {
+    const retryAfter = Math.ceil((entry.resetAt - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  entry.count++;
+  return { allowed: true };
+}
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password } = body;
 
-    // Validate input
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
@@ -15,10 +38,16 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const usersCollection = await getCollection('User');
+    const rateLimit = checkRateLimit(email.toLowerCase());
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Too many login attempts. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfter) } }
+      );
+    }
 
-    // Find user by email
-    const userData = await usersCollection.findOne({ email });
+    const usersCollection = await getCollection('User');
+    const userData = await usersCollection.findOne({ email: email.toLowerCase() });
 
     if (!userData) {
       return NextResponse.json(
@@ -27,7 +56,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Compare password
     const passwordMatch = await bcrypt.compare(password, userData.password);
 
     if (!passwordMatch) {
@@ -37,21 +65,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Return user data without password
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { password: _password, ...userWithoutPassword } = userData;
+    loginAttempts.delete(email.toLowerCase());
 
-    // Fetch user preferences to check onboarding status
+    const userId = userData._id.toString();
+    const token = await createSessionToken(userId, email);
+
     const preferencesCollection = await getCollection('UserPreferences');
-    const preferences = await preferencesCollection.findOne({ userId: userData._id.toString() });
+    const preferences = await preferencesCollection.findOne({ userId });
     const onboardingComplete = preferences?.onboardingComplete ?? false;
 
-    return NextResponse.json(
-      { message: 'Login successful', user: { id: userData._id.toString(), ...userWithoutPassword, onboardingComplete } },
+    const response = NextResponse.json(
+      {
+        message: 'Login successful',
+        user: { id: userId, email: userData.email, name: userData.name, onboardingComplete },
+      },
       { status: 200 }
     );
+
+    const cookieHeaders = setSessionCookie(token);
+    response.headers.set('Set-Cookie', cookieHeaders['Set-Cookie']);
+
+    return response;
   } catch (error) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     return NextResponse.json(
       { error: 'Failed to login' },
       { status: 500 }

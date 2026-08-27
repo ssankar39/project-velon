@@ -11,14 +11,12 @@
   "dependencies": {
     "@google/genai": "^1.42.0",
     "bcryptjs": "^3.0.3",
-    "firebase": "^10.7.0",
-    "lucide-react": "^0.344.0",
+    "jose": "^6.2.10",
+    "lucide-react": "^1.34.0",
     "mongodb": "^7.0.0",
-    "next": "^14.0.0",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "socket.io-client": "^4.7.2",
-    "typescript": "^5.3.3"
+    "next": "^16.3.3",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.16",
@@ -28,6 +26,7 @@
     "autoprefixer": "^10.4.21",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.0",
-    "tailwindcss": "^4.1.16"
+    "tailwindcss": "^4.1.16",
+    "typescript": "^5.3.3"
   }
 }

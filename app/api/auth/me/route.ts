@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 import { getSessionFromRequest } from '@/lib/auth';
+import { ObjectId } from 'mongodb';
 import { logger } from '@/lib/logger';
-
-export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,7 +12,6 @@ export async function GET(req: NextRequest) {
     }
 
     const usersCollection = await getCollection('User');
-    const { ObjectId } = await import('mongodb');
     const user = await usersCollection.findOne({ _id: new ObjectId(session.sub) });
 
     if (!user) {
@@ -29,12 +27,9 @@ export async function GET(req: NextRequest) {
       email: user.email,
       name: user.name,
       onboardingComplete,
-    }, { status: 200 });
+    });
   } catch (error) {
-    logger.error('Error fetching auth status:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch auth status' },
-      { status: 500 }
-    );
+    logger.error('Error fetching user:', error);
+    return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 });
   }
 }

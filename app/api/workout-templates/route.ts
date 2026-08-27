@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 function normalizeTemplateName(name: string): string {
   const simplified = name
@@ -26,11 +28,9 @@ function hasTemplateNameClash(a: string, b: string): boolean {
   return aNorm === bNorm;
 }
 
-/** GET /api/workout-templates – list templates for a user */
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.nextUrl.searchParams.get('userId');
-    if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
+    const { userId } = getAuthUser(req);
 
     const col = await getCollection('WorkoutTemplate');
     const templates = await col.find({ userId }).sort({ updatedAt: -1 }).toArray();
@@ -38,19 +38,22 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(formatted, { status: 200 });
   } catch (error) {
-    console.error('Error listing templates:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error listing templates:', error);
     return NextResponse.json({ error: 'Failed to list templates' }, { status: 500 });
   }
 }
 
-/** POST /api/workout-templates – create a template */
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = getAuthUser(req);
     const body = await req.json();
-    const { userId, name, goal, exercises, overrideExisting } = body;
+    const { name, goal, exercises, overrideExisting } = body;
 
-    if (!userId || !name || !goal) {
-      return NextResponse.json({ error: 'Missing required fields (userId, name, goal)' }, { status: 400 });
+    if (!name || !goal) {
+      return NextResponse.json({ error: 'Missing required fields (name, goal)' }, { status: 400 });
     }
 
     const col = await getCollection('WorkoutTemplate');
@@ -100,7 +103,10 @@ export async function POST(req: NextRequest) {
     const result = await col.insertOne(doc);
     return NextResponse.json({ _id: result.insertedId.toString(), ...doc }, { status: 201 });
   } catch (error) {
-    console.error('Error creating template:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error creating template:', error);
     return NextResponse.json({ error: 'Failed to create template' }, { status: 500 });
   }
 }

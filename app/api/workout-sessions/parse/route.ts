@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { getCollection } from '@/lib/mongodb';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 interface ParsedSet {
   setNumber: number;
@@ -157,10 +159,13 @@ Rules:
 User input:
 ${rawText}`;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-lite',
-    contents: prompt,
-  });
+  const response = await Promise.race([
+    ai.models.generateContent({
+      model: 'gemini-2.5-flash-lite',
+      contents: prompt,
+    }),
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('AI request timed out')), 10000)),
+  ]);
 
   const text = response.text?.trim();
   if (!text) return null;
@@ -217,10 +222,10 @@ async function mapExerciseIds(userId: string | undefined, exercises: ParsedExerc
 
 export async function POST(req: NextRequest) {
   try {
+    const { userId } = getAuthUser(req);
     const body = await req.json();
     const rawInput = String(body?.rawInput || '').trim();
     const unit = body?.unit === 'kg' ? 'kg' : 'lbs';
-    const userId = typeof body?.userId === 'string' ? body.userId : undefined;
 
     if (!rawInput) {
       return NextResponse.json({ error: 'rawInput is required' }, { status: 400 });
@@ -242,7 +247,10 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ exercises, source }, { status: 200 });
   } catch (error) {
-    console.error('Error parsing workout text:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error parsing workout text:', error);
     return NextResponse.json({ error: 'Failed to parse workout text' }, { status: 500 });
   }
 }

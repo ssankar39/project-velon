@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+import { getAuthUser } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
+import { logger } from '@/lib/logger';
 
 function normalizeTemplateName(name: string): string {
   const simplified = name
@@ -27,40 +29,59 @@ function hasTemplateNameClash(a: string, b: string): boolean {
   return aNorm === bNorm;
 }
 
-/** GET /api/workout-templates/[id] */
 export async function GET(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { userId } = getAuthUser(_req);
     const { id } = await context.params;
+
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch {
+      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+    }
+
     const col = await getCollection('WorkoutTemplate');
-    const doc = await col.findOne({ _id: new ObjectId(id) });
+    const doc = await col.findOne({ _id: objectId, userId });
     if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ ...doc, _id: doc._id.toString() }, { status: 200 });
   } catch (error) {
-    console.error('Error fetching template:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error fetching template:', error);
     return NextResponse.json({ error: 'Failed to fetch template' }, { status: 500 });
   }
 }
 
-/** PUT /api/workout-templates/[id] */
 export async function PUT(
   req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { userId } = getAuthUser(req);
     const { id } = await context.params;
+
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch {
+      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+    }
+
     const body = await req.json();
     const col = await getCollection('WorkoutTemplate');
 
-    const existing = await col.findOne({ _id: new ObjectId(id) });
+    const existing = await col.findOne({ _id: objectId, userId });
     if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     const requestedName = typeof body.name === 'string' ? body.name.trim() : undefined;
     if (requestedName) {
       const siblings = await col
-        .find({ userId: existing.userId, _id: { $ne: new ObjectId(id) } })
+        .find({ userId, _id: { $ne: objectId } })
         .project({ _id: 1, name: 1 })
         .toArray() as Array<{ _id: { toString(): string }; name?: string }>;
 
@@ -83,29 +104,43 @@ export async function PUT(
       updatedAt: new Date(),
     };
 
-    const result = await col.updateOne({ _id: new ObjectId(id) }, { $set: update });
+    const result = await col.updateOne({ _id: objectId, userId }, { $set: update });
     if (result.matchedCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error('Error updating template:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error updating template:', error);
     return NextResponse.json({ error: 'Failed to update template' }, { status: 500 });
   }
 }
 
-/** DELETE /api/workout-templates/[id] */
 export async function DELETE(
   _req: NextRequest,
   context: { params: Promise<{ id: string }> },
 ) {
   try {
+    const { userId } = getAuthUser(_req);
     const { id } = await context.params;
+
+    let objectId: ObjectId;
+    try {
+      objectId = new ObjectId(id);
+    } catch {
+      return NextResponse.json({ error: 'Invalid ID format' }, { status: 400 });
+    }
+
     const col = await getCollection('WorkoutTemplate');
-    const result = await col.deleteOne({ _id: new ObjectId(id) });
+    const result = await col.deleteOne({ _id: objectId, userId });
     if (result.deletedCount === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 });
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    console.error('Error deleting template:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('Error deleting template:', error);
     return NextResponse.json({ error: 'Failed to delete template' }, { status: 500 });
   }
 }

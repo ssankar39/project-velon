@@ -1,4 +1,5 @@
 import { MongoClient, Db } from 'mongodb';
+import { logger } from '@/lib/logger';
 
 const uri = process.env.MONGODB_URI;
 
@@ -15,16 +16,14 @@ export async function connectToDatabase(): Promise<Db> {
   }
 
   try {
-    console.log('Attempting MongoDB connection...');
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    console.log('URI:', uri!.replace(/:[^:]*@/, ':***@'));
+    logger.info('Attempting MongoDB connection...');
     cachedClient = new MongoClient(uri as string);
     await cachedClient.connect();
     cachedDb = cachedClient.db('fitness_website');
-    console.log('✓ Connected to MongoDB successfully');
+    logger.info('Connected to MongoDB successfully');
     return cachedDb;
   } catch (error) {
-    console.error('✗ Failed to connect to MongoDB:', error instanceof Error ? error.message : error);
+    logger.error('Failed to connect to MongoDB:', error instanceof Error ? error.message : error);
     throw error;
   }
 }

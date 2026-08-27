@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Loader2, Zap, ChevronRight, ChevronLeft, Check } from 'lucide-react';
-
-interface AuthUser { id: string; email: string; name?: string; }
+import { useAuth } from '@/app/hooks/useAuth';
 
 const STEPS = ['Welcome', 'Body', 'Fitness', 'Goals'] as const;
 
 export default function OnboardingPage() {
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const { user } = useAuth();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
 
@@ -26,12 +25,6 @@ export default function OnboardingPage() {
     weightGoal: '',
     calorieGoal: '',
   });
-
-  useEffect(() => {
-    const stored = localStorage.getItem('user');
-    if (!stored) { window.location.href = '/login'; return; }
-    try { setUser(JSON.parse(stored)); } catch { window.location.href = '/login'; }
-  }, []);
 
   const set = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -78,12 +71,6 @@ export default function OnboardingPage() {
           }),
         });
       }
-
-      const updatedUser: AuthUser & { onboardingComplete: boolean } = {
-        ...user,
-        onboardingComplete: true,
-      };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
 
       window.location.href = '/';
     } catch {

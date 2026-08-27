@@ -2,12 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Mail, Lock, Save, Loader2 } from 'lucide-react';
-
-interface CurrentUser {
-  id: string;
-  email: string;
-  name?: string;
-}
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface ProfileFormData {
   name: string;
@@ -18,7 +14,7 @@ interface ProfileFormData {
 }
 
 export const ProfilePage: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null);
+  const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' }>({ text: '', type: 'success' });
   const [formData, setFormData] = useState<ProfileFormData>({
@@ -30,21 +26,14 @@ export const ProfilePage: React.FC = () => {
   });
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser);
-        setCurrentUser(user);
-        setFormData(prev => ({
-          ...prev,
-          name: user.name || '',
-          email: user.email || '',
-        }));
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-      }
+    if (currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        name: currentUser.name || '',
+        email: currentUser.email || '',
+      }));
     }
-  }, []);
+  }, [currentUser]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -113,11 +102,6 @@ export const ProfilePage: React.FC = () => {
         return;
       }
 
-      // Update localStorage with new user data
-      const updatedUser = { ...currentUser, name: formData.name };
-      localStorage.setItem('user', JSON.stringify(updatedUser));
-      setCurrentUser(updatedUser);
-
       setMessage({ text: 'Profile updated successfully!', type: 'success' });
       
       // Clear password fields
@@ -128,7 +112,7 @@ export const ProfilePage: React.FC = () => {
         confirmPassword: '',
       }));
     } catch (error) {
-      console.error('Error updating profile:', error);
+      logger.error('Error updating profile:', error);
       setMessage({ text: 'Failed to update profile', type: 'error' });
     } finally {
       setLoading(false);

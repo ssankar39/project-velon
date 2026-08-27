@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 interface AuthUser {
   id: string;
@@ -29,7 +30,7 @@ export default function ProtectedLayout({ children }: { children: React.ReactNod
         
         setLoading(false);
       } catch (e) {
-        console.error('Failed to parse stored user:', e);
+        logger.error('Failed to parse stored user:', e);
         localStorage.removeItem('user');
         window.location.href = '/login';
       }

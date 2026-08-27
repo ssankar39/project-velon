@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 import { toCSV } from '@/lib/csv';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,29 +12,17 @@ const CSV_HEADERS = [
   'difficulty', 'category', 'instructions', 'variations',
 ];
 
-/**
- * GET /api/exercises/export
- *
- * Query params:
- *   - muscle: filter by primaryMuscle
- *   - equipment: filter by equipment
- *   - userId: include user's custom exercises
- *
- * Returns a CSV download with all matching exercises.
- */
 export async function GET(req: NextRequest) {
   try {
+    const { userId } = getAuthUser(req);
     const { searchParams } = new URL(req.url);
     const muscle = searchParams.get('muscle');
     const equipment = searchParams.get('equipment');
-    const userId = searchParams.get('userId');
 
     const filter: Record<string, unknown> = {};
     if (muscle) filter['primaryMuscles'] = muscle;
     if (equipment) filter['equipment'] = equipment;
-    if (userId) {
-      filter['$or'] = [{ isCustom: false }, { createdBy: userId }];
-    }
+    filter['$or'] = [{ isCustom: false }, { createdBy: userId }];
 
     const col = await getCollection('Exercise');
     const exercises = await col.find(filter).sort({ category: 1, name: 1 }).toArray();
@@ -62,7 +52,10 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('CSV export error:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('CSV export error:', error);
     return NextResponse.json({ error: 'Failed to export exercises' }, { status: 500 });
   }
 }

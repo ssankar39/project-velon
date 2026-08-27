@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,7 +29,7 @@ export async function POST(req: NextRequest) {
     );
 
   } catch (error) {
-    console.error('Error analyzing image:', error);
+    logger.error('Error analyzing image:', error);
     return NextResponse.json(
       { error: 'Failed to analyze image' },
       { status: 500 }

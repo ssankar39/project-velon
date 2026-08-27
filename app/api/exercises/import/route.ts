@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 import { parseCSV } from '@/lib/csv';
+import { getAuthUser } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import type { MovementPattern, EquipmentType, MuscleGroup, Difficulty } from '@/app/types/workout';
 
-// ── Column mapping: CSV BodyPart → our MuscleGroup(s) ──────────────
 const BODY_PART_MAP: Record<string, MuscleGroup[]> = {
   'chest':        ['chest'],
   'shoulders':    ['front_delts', 'side_delts'],
@@ -34,7 +35,6 @@ const BODY_PART_MAP: Record<string, MuscleGroup[]> = {
   'legs':         ['quads', 'hamstrings', 'glutes'],
 };
 
-// ── Column mapping: CSV Equipment → our EquipmentType ──────────────
 const EQUIPMENT_MAP: Record<string, EquipmentType> = {
   'barbell':            'barbell',
   'dumbbell':           'dumbbell',
@@ -62,14 +62,12 @@ const EQUIPMENT_MAP: Record<string, EquipmentType> = {
   '':                   'bodyweight',
 };
 
-// ── Column mapping: CSV Level → our Difficulty ─────────────────────
 const LEVEL_MAP: Record<string, Difficulty> = {
   'beginner':     'beginner',
   'intermediate': 'intermediate',
   'expert':       'advanced',
 };
 
-// ── Column mapping: CSV Type → our MovementPattern (best-effort) ───
 const TYPE_PATTERN_MAP: Record<string, MovementPattern> = {
   'strength':              'push',
   'powerlifting':          'push',
@@ -80,7 +78,6 @@ const TYPE_PATTERN_MAP: Record<string, MovementPattern> = {
   'cardio':                'core',
 };
 
-/** Infer a more accurate movement pattern from body part + type. */
 function inferPattern(bodyPart: string, type: string): MovementPattern {
   const bp = bodyPart.toLowerCase();
   if (['lower back', 'hamstrings', 'glutes'].includes(bp)) return 'hinge';
@@ -91,17 +88,9 @@ function inferPattern(bodyPart: string, type: string): MovementPattern {
   return TYPE_PATTERN_MAP[type.toLowerCase()] ?? 'isolation';
 }
 
-/**
- * POST /api/exercises/import
- *
- * Accepts a CSV file (multipart/form-data with field "file")
- * or raw CSV text (application/json with { csv: "..." }).
- *
- * Expected CSV columns:
- *   Title, description, Type, BodyPart, Equipment, Level, Rating, RatingDescription
- */
 export async function POST(req: NextRequest) {
   try {
+    getAuthUser(req);
     let csvText: string;
     const contentType = req.headers.get('content-type') ?? '';
 
@@ -124,7 +113,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No data rows found' }, { status: 400 });
     }
 
-    // Normalize header keys to lowercase for case-insensitive lookup
     const rows = rawRows.map(r => {
       const normalized: Record<string, string> = {};
       for (const [k, v] of Object.entries(r)) {
@@ -142,38 +130,30 @@ export async function POST(req: NextRequest) {
 
     for (let i = 0; i < rows.length; i++) {
       const r = rows[i];
-      const rowNum = i + 2; // 1-indexed + header row
+      const rowNum = i + 2;
 
-      // ── Map Title → name ───────────────────────────────────────
       const name = (r['title'] ?? r['name'])?.trim();
       if (!name) {
         errors.push({ row: rowNum, message: `Missing Title. Keys: ${Object.keys(r).join(', ')}` });
         continue;
       }
 
-      // ── Map BodyPart → primaryMuscles ──────────────────────────
       const rawBodyPart = (r['bodypart'] ?? r['body part'] ?? '').trim().toLowerCase();
       const primaryMuscles = BODY_PART_MAP[rawBodyPart] ?? ['chest'];
       if (!BODY_PART_MAP[rawBodyPart]) unmappedBodyParts.add(rawBodyPart || '(empty)');
 
-      // ── Map Equipment → equipment[] ────────────────────────────
       const rawEquipment = (r['equipment'] ?? '').trim().toLowerCase();
       const mappedEquip = EQUIPMENT_MAP[rawEquipment] ?? 'bodyweight';
       if (!(rawEquipment in EQUIPMENT_MAP)) unmappedEquipment.add(rawEquipment || '(empty)');
 
-      // ── Map Level → difficulty ─────────────────────────────────
       const rawLevel = (r['level'] ?? 'beginner').trim().toLowerCase();
       const difficulty = LEVEL_MAP[rawLevel] ?? 'beginner';
 
-      // ── Map Type → category & movementPattern ─────────────────
       const rawType = (r['type'] ?? '').trim();
       const category = rawType.toLowerCase() || 'strength';
       const movementPattern = inferPattern(rawBodyPart, rawType);
 
-      // ── description → instructions ────────────────────────────
       const instructions = (r['description'] ?? r['desc'] ?? '').trim();
-
-      // ── Rating (keep as metadata) ─────────────────────────────
       const rating = parseFloat(r['rating'] ?? '0') || 0;
 
       docs.push({
@@ -195,22 +175,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ── Bulk insert, skipping duplicates by name ─────────────────
     let inserted = 0;
     let skippedDuplicates = 0;
 
     if (docs.length) {
-      // Build a set of existing names for fast lookup
-      const existing = await col.find({}, { projection: { name: 1 } }).toArray();
-      const existingNames = new Set(existing.map(e => (e.name as string).toLowerCase()));
+      // Use distinct instead of loading all docs into memory
+      const existingNames = await col.distinct('name', { isCustom: false });
+      const existingNameSet = new Set(existingNames.map(n => n.toLowerCase()));
 
       const toInsert = docs.filter(d => {
         const key = (d.name as string).toLowerCase();
-        if (existingNames.has(key)) {
+        if (existingNameSet.has(key)) {
           skippedDuplicates++;
           return false;
         }
-        existingNames.add(key); // prevent intra-batch dupes
+        existingNameSet.add(key);
         return true;
       });
 
@@ -230,7 +209,10 @@ export async function POST(req: NextRequest) {
       totalRows: rows.length,
     }, { status: 201 });
   } catch (error) {
-    console.error('CSV import error:', error);
+    if (error instanceof Error && error.message === 'UNAUTHORIZED') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    logger.error('CSV import error:', error);
     return NextResponse.json({ error: 'Failed to import CSV' }, { status: 500 });
   }
 }

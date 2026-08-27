@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
 import bcrypt from 'bcryptjs';
+import { createSessionToken, setSessionCookie } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { email, password, name } = body;
 
-    // Validate input
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
@@ -23,9 +24,8 @@ export async function POST(req: NextRequest) {
     }
 
     const usersCollection = await getCollection('User');
-
-    // Check if user already exists
-    const existingUser = await usersCollection.findOne({ email });
+    const normalizedEmail = email.toLowerCase();
+    const existingUser = await usersCollection.findOne({ email: normalizedEmail });
 
     if (existingUser) {
       return NextResponse.json(
@@ -34,12 +34,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create user
     const result = await usersCollection.insertOne({
-      email,
+      email: normalizedEmail,
       password: hashedPassword,
       name: name || null,
       createdAt: new Date(),
@@ -48,7 +46,6 @@ export async function POST(req: NextRequest) {
 
     const userId = result.insertedId.toString();
 
-    // Create initial preferences with onboarding incomplete
     const preferencesCollection = await getCollection('UserPreferences');
     await preferencesCollection.insertOne({
       userId,
@@ -57,12 +54,19 @@ export async function POST(req: NextRequest) {
       updatedAt: new Date(),
     });
 
-    return NextResponse.json(
-      { message: 'User created successfully', user: { id: userId, email, name, onboardingComplete: false } },
+    const token = await createSessionToken(userId, normalizedEmail);
+
+    const response = NextResponse.json(
+      { message: 'User created successfully', user: { id: userId, email: normalizedEmail, name, onboardingComplete: false } },
       { status: 201 }
     );
+
+    const cookieHeaders = setSessionCookie(token);
+    response.headers.set('Set-Cookie', cookieHeaders['Set-Cookie']);
+
+    return response;
   } catch (error) {
-    console.error('Signup error:', error);
+    logger.error('Signup error:', error);
     return NextResponse.json(
       { error: 'Failed to create user' },
       { status: 500 }

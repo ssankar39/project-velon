@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { GlassSidebar } from '@/app/components/GlassSidebar';
 import { ModernTopBar } from '@/app/components/ModernTopBar';
 import { DashboardModule } from '@/app/components/Dashboard/DashboardModule';
@@ -14,20 +14,13 @@ import { SettingsPage } from '@/app/components/Settings/SettingsPage';
 import LandingPage from '@/app/components/LandingPage';
 import AIChatWidget from '@/app/components/AIChatWidget';
 import { UserStats, Meal, FastingState } from '@/app/types';
-
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
-  onboardingComplete?: boolean;
-}
+import { useAuth } from '@/app/hooks/useAuth';
 
 type ModuleType = 'dashboard' | 'calories' | 'calculator' | 'fasting' | 'workouts' | 'metrics' | 'profile' | 'settings';
 
 export default function Home() {
-  const [loading, setLoading] = useState(true);
+  const { user: currentUser, loading, logout } = useAuth();
   const [activeModule, setActiveModule] = useState<ModuleType>('dashboard');
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -44,54 +37,29 @@ export default function Home() {
 
   const [, setMeals] = useState<Meal[]>([]);
 
-  useEffect(() => {
-    // Check localStorage for user
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        const user = JSON.parse(storedUser) as AuthUser;
-        setCurrentUser(user);
-        
-        // If user hasn't completed onboarding, redirect immediately
-        if (!user.onboardingComplete) {
-          window.location.href = '/onboarding';
-          return;
-        }
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-        localStorage.removeItem('user');
-      }
-    }
-    setLoading(false);
-  }, []);
-
   const handleLogout = () => {
-    localStorage.removeItem('user');
-    window.location.href = '/landing';
+    logout();
   };
 
-  const handleMealsUpdate = (updatedMeals: Meal[]) => {
+  const handleMealsUpdate = useCallback((updatedMeals: Meal[]) => {
     setMeals(updatedMeals);
     const totalCalories = updatedMeals.reduce((sum, meal) => sum + meal.calories, 0);
     setUserStats((prev) => ({
       ...prev,
       caloriesConsumed: totalCalories,
     }));
-  };
+  }, []);
 
-  const handleFastingUpdate = (state: FastingState, progress: number) => {
+  const handleFastingUpdate = useCallback((state: FastingState, progress: number) => {
     setUserStats((prev) => ({
       ...prev,
       fastingProgress: progress,
     }));
-    // Only trigger refresh when fasting state changes (start/end), not on progress updates
-    // This is handled by checking if isActive changed
-  };
+  }, []);
 
-  const handleFastingStateChange = () => {
-    // This is called only when starting or ending a fast
+  const handleFastingStateChange = useCallback(() => {
     setRefreshKey(prev => prev + 1);
-  };
+  }, []);
 
   useEffect(() => {
     if (!loading && currentUser && !currentUser.onboardingComplete) {

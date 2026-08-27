@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCollection } from '@/lib/mongodb';
+import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
 
-/**
- * Search exercises from our own MongoDB exercise library.
- * Query params: q (text), muscle (primary muscle), userId (for custom exercises), limit
- */
 export async function GET(req: NextRequest) {
   try {
     const sp = req.nextUrl.searchParams;
@@ -23,7 +20,6 @@ export async function GET(req: NextRequest) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const query: Record<string, any> = {};
 
-    // Text search by name or aliases (case-insensitive regex)
     if (q && q.length >= 2) {
       const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       query.$or = [
@@ -36,7 +32,6 @@ export async function GET(req: NextRequest) {
       query.primaryMuscles = muscle;
     }
 
-    // Include built-in + user custom exercises
     if (userId) {
       const visibility = [{ isCustom: false }, { isCustom: true, createdBy: userId }];
       if (query.$or) {
@@ -72,7 +67,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(results, { status: 200 });
   } catch (error) {
-    console.error('Error searching exercises:', error);
-    return NextResponse.json([], { status: 200 });
+    logger.error('Error searching exercises:', error);
+    return NextResponse.json({ error: 'Failed to search exercises' }, { status: 500 });
   }
 }

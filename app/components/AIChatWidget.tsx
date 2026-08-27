@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Loader2, Dumbbell } from 'lucide-react';
+import { useAuth } from '@/app/hooks/useAuth';
 
 interface ChatMessage {
   role: 'assistant' | 'user';
@@ -14,6 +15,7 @@ const WELCOME_MESSAGE: ChatMessage = {
 };
 
 export default function AIChatWidget() {
+  const { user: currentUser } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState('');
@@ -40,8 +42,8 @@ export default function AIChatWidget() {
       setMessages(prev => [...prev, userMsg]);
       setLoading(true);
       try {
-        const userId = getUserId();
-        const res = await fetch('/api/chat', {
+      const userId = currentUser?.email || null;
+      const res = await fetch('/api/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message: context, userId, includeWorkoutData: true }),
@@ -59,15 +61,7 @@ export default function AIChatWidget() {
     };
     window.addEventListener('coach-context', handleCoachContext);
     return () => window.removeEventListener('coach-context', handleCoachContext);
-  }, []);
-
-  const getUserId = () => {
-    try {
-      const stored = localStorage.getItem('user');
-      if (stored) return JSON.parse(stored).email;
-    } catch { /* ignore */ }
-    return null;
-  };
+  }, [currentUser?.email]);
 
   const sendMessage = useCallback(async () => {
     const text = input.trim();
@@ -79,7 +73,7 @@ export default function AIChatWidget() {
     setLoading(true);
 
     try {
-      const userId = getUserId();
+      const userId = currentUser?.email || null;
       // Include workout data if the message seems to reference workouts/training
       const workoutKeywords = /workout|session|exercise|set|rep|weight|progress|volume|training|routine|split|pr|personal record|bench|squat|deadlift|log/i;
       const includeWorkoutData = workoutKeywords.test(text);
@@ -103,7 +97,7 @@ export default function AIChatWidget() {
     } finally {
       setLoading(false);
     }
-  }, [input, loading]);
+  }, [input, loading, currentUser?.email]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -112,12 +106,13 @@ export default function AIChatWidget() {
     }
   };
 
-  // Simple markdown-ish rendering (bold, bullets)
+  const escapeHtml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   const renderContent = (text: string) => {
     return text.split('\n').map((line, i) => {
-      // Bold
-      let processed = line.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-      // Bullet points
+      let processed = escapeHtml(line);
+      processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
       if (/^[-•*]\s/.test(processed)) {
         processed = '&bull; ' + processed.replace(/^[-•*]\s/, '');
       }

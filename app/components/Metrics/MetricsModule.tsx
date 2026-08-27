@@ -3,6 +3,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Loader2, BarChart3, ArrowUp, ArrowDown, Calculator } from 'lucide-react';
 import { calculateBMR } from '@/app/utils/calculations';
+import { useAuth } from '@/app/hooks/useAuth';
+import { logger } from '@/lib/logger';
 
 interface Metric {
   id: string;
@@ -14,12 +16,6 @@ interface Metric {
   timestamp: string;
 }
 
-interface AuthUser {
-  id: string;
-  email: string;
-  name?: string;
-}
-
 interface UserProfile {
   age?: number;
   gender?: 'male' | 'female';
@@ -29,9 +25,9 @@ interface UserProfile {
 }
 
 export const MetricsModule: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [metrics, setMetrics] = useState<Metric[]>([]);
   const [loading, setLoading] = useState(false);
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [formState, setFormState] = useState({
     weight: '',
@@ -49,7 +45,7 @@ export const MetricsModule: React.FC = () => {
       const data = await response.json();
       setMetrics(data || []);
     } catch (error) {
-      console.error('Error fetching metrics:', error);
+      logger.error('Error fetching metrics:', error);
     } finally {
       setLoading(false);
     }
@@ -62,7 +58,7 @@ export const MetricsModule: React.FC = () => {
       const data = await response.json();
       setUserProfile(data || {});
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      logger.error('Error fetching user profile:', error);
     }
   }, [currentUser]);
 
@@ -103,17 +99,6 @@ export const MetricsModule: React.FC = () => {
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      try {
-        setCurrentUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Failed to parse stored user:', e);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
     if (currentUser) {
       fetchMetrics();
       fetchUserProfile();
@@ -143,7 +128,7 @@ export const MetricsModule: React.FC = () => {
         bmr: formState.bmr ? parseFloat(formState.bmr) : null,
         tdee: formState.tdee ? parseFloat(formState.tdee) : null,
       };
-      console.log('Sending metric data:', metricData);
+      logger.debug('Sending metric data:', metricData);
       const response = await fetch('/api/metrics', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,9 +139,9 @@ export const MetricsModule: React.FC = () => {
         let errorData;
         try {
           errorData = await response.json();
-          console.error('API error response:', errorData);
+          logger.error('API error response:', errorData);
         } catch {
-          console.error('Failed to parse error response:', await response.text());
+          logger.error('Failed to parse error response:', await response.text());
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         throw new Error(errorData.details || errorData.error || 'Failed to add metric');
@@ -167,7 +152,7 @@ export const MetricsModule: React.FC = () => {
       setFormState({ weight: '', bodyFat: '', bmi: '', bmr: '', tdee: '' });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('Error adding metric:', errorMessage);
+      logger.error('Error adding metric:', errorMessage);
       alert(`Failed to add metric: ${errorMessage}`);
     } finally {
       setLoading(false);

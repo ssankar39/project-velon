@@ -3,15 +3,16 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/app/hooks/useAuth';
 
 export default function LandingPage() {
   const router = useRouter();
+  const { user: currentUser } = useAuth();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    setIsLoggedIn(!!user);
-  }, []);
+    setIsLoggedIn(!!currentUser);
+  }, [currentUser]);
 
   const handleLoginClick = (e: React.MouseEvent) => {
     if (isLoggedIn) {
